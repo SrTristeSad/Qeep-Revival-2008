@@ -11,6 +11,7 @@ local lab_host = require('lib.lab_host')
 local jcl_history = require('lib.jcl_history')
 local assets = require('lib.legacy_assets')
 local symbols = require('lib.legacy_symbols')
+local jcl_screen = require('lib.jcl_screen')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -18,7 +19,7 @@ local VH = BOTTOM-TOP
 local view, selected, serverHost, status = 'menu',1,'127.0.0.1',''
 local options = {
   'Abrir JCL (offline)', 'Receber JCL do servidor', 'Testar servidor local',
-  'Configurar endereco IP', 'Sobre o projeto', 'Sair'
+  'Configurar endereco IP', 'Composicao JCL (laboratorio)', 'Sobre o projeto', 'Sair'
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touches = {}
@@ -58,7 +59,8 @@ local function dismissStatus()
 end
 local function refreshLayout(ensure)
   if not document then return end
-  computed=layout.build(jcl_view.form(document),font,220)
+  local form=jcl_view.form(document)
+  computed=layout.place(layout.build(form,font,220),VH,form.valign)
   if ensure and document.choosing then
     scroll=layout.ensure_choice_visible(computed,document.selected,document.choiceFocus,scroll,VH)
   elseif ensure then scroll=layout.ensure_visible(computed,document.selected,scroll,VH)
@@ -119,8 +121,11 @@ local function activateMenu()
     if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':5190\n\nTeste somente de transporte.')
     else showError('Falha de teste: '..tostring(err or data)) end
   elseif selected==4 then view='host';love.keyboard.setTextInput(true)
-  elseif selected==5 then view='about'
-  elseif selected==6 then love.event.quit() end
+  elseif selected==5 then
+    local file=love.filesystem.read('fixtures/composition.xml')
+    if file then openJCL(file) else showError('Fixture de composicao nao encontrada.') end
+  elseif selected==6 then view='about'
+  elseif selected==7 then love.event.quit() end
 end
 local function navigate(href, activated)
   if type(href)~='string' or href=='' then return end
@@ -149,29 +154,37 @@ local function navigate(href, activated)
     showError('Endereco nao permitido no laboratorio:\n'..href)
   end
 end
+local activateJCL
 local function softkey(kind)
-  local form=jcl_view.form(document)
-  for _,item in ipairs(form.items) do
-    if item.kind==kind then
-      if item.href and item.href~='' then
-        -- A self-referential Back softkey on the root fixture must not trap the user.
-        if kind=='lsk' and item.href=='#'..tostring(form.id or '') then
-          return goBack()
-        end
-        local button=nil
-        if item.href=='/revival/submit/echo' then
-          for _,candidate in ipairs(form.items) do
-            if candidate.kind=='button' and candidate.href==item.href then button=candidate;break end
-          end
-        end
-        navigate(item.href,button)
-      end
-      return
-    end
+  if document.choosing then
+    jcl_view.choice_close(document)
+    refreshLayout(true)
+    return
   end
-  if kind=='lsk' then goBack() end
+  if document.editing then
+    document.editing=false
+    love.keyboard.setTextInput(false)
+    refreshLayout(true)
+    return
+  end
+  local form=jcl_view.form(document)
+  local cmd=jcl_screen.command(form,kind)
+  if cmd.href and cmd.href~='' then
+    -- An unproductive root Back command should still leave the laboratory.
+    if cmd.cancel and cmd.href=='#'..tostring(form.id or '') then return goBack() end
+    local button=nil
+    if cmd.href=='/revival/submit/echo' then
+      for _,candidate in ipairs(form.items) do
+        if candidate.kind=='button' and candidate.href==cmd.href then button=candidate;break end
+      end
+    end
+    return navigate(cmd.href,button)
+  end
+  if cmd.cancel or kind=='lsk' then return goBack() end
+  -- Java ME's default right-side action in this reconstruction activates focus.
+  return activateJCL()
 end
-local function activateJCL()
+activateJCL = function()
   local active=jcl_view.item(document)
   local result=jcl_view.activate(document)
   if result=='editing' then love.keyboard.setTextInput(true)
@@ -270,14 +283,9 @@ local function drawJCL()
     symbols.draw(love.graphics,strip,second,220,290,1,30)
   end
   paint(c.purple);rect('fill',0,H-25,W,25)
-  local left,right='Voltar','Abrir'
-  for _,item in ipairs(form.items) do
-    if item.kind=='lsk' then left=item.label or left end
-    if item.kind=='rsk' then right=item.label or right end
-  end
-  if document.choosing then left='Voltar';right='Concluir' end
-  text(left,6,H-19,105,'left',false,c.white)
-  text(right,125,H-19,108,'right',false,c.white)
+  local left,right=jcl_screen.commands(form,document.choosing)
+  text(left.label,6,H-19,105,'left',false,c.white)
+  text(right.label,125,H-19,108,'right',false,c.white)
 end
 function love.draw()
   local scale,ox,oy=transform()
@@ -302,10 +310,10 @@ function love.draw()
     paint(c.olive);rect('fill',9,83,W-18,1)
     if view=='menu' then
       for i,option in ipairs(options) do
-        local y=91+(i-1)*30
+        local y=91+(i-1)*28
         if selected==i then
-          paint(c.highlight);rect('fill',11,y,W-22,27)
-          paint(c.purple);rect('line',11,y,W-22,27)
+          paint(c.highlight);rect('fill',11,y,W-22,25)
+          paint(c.purple);rect('line',11,y,W-22,25)
         end
         text((selected==i and '> ' or '  ')..option,16,y+6,W-32)
       end
@@ -344,7 +352,7 @@ function love.keypressed(key)
       elseif key=='return' or key=='kpenter' or key=='space' then
         jcl_view.choice_choose(document);refreshLayout(true)
       elseif key=='escape' or key=='backspace' or key=='left' or key=='right' then
-        jcl_view.choice_close(document);refreshLayout(true) end
+        softkey(key=='right' and 'rsk' or 'lsk') end
       return
     end
     if document.editing then
@@ -393,13 +401,12 @@ local function pointer(x,y)
   if px<0 or px>W or py<0 or py>H then return end
   if view=='menu' then
     for i=1,#options do
-      local y=91+(i-1)*30
-      if py>=y and py<=y+27 then selected=i;activateMenu();break end
+      local y=91+(i-1)*28
+      if py>=y and py<=y+25 then selected=i;activateMenu();break end
     end
   elseif view=='jcl' and document then
     if py>=H-25 then
-      if document.choosing then jcl_view.choice_close(document);refreshLayout(true)
-      elseif px<W/2 then softkey('lsk') else softkey('rsk') end
+      if px<W/2 then softkey('lsk') else softkey('rsk') end
     elseif py>=TOP and py<BOTTOM then
       local index=layout.hit(computed,px-10,py-TOP,scroll,220,VH)
       if index then

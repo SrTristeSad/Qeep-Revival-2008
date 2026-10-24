@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 6 — navegação JCL com histórico e assets opcionais (protótipo)
+## Estado atual: fase 8 — composição de telas JCL (protótipo)
 
 - Cliente LÖVE inicial com controles por teclado, mouse e toque, renderização lógica em **240 × 320**, paleta extraída de `registry.ini` e tela **explicitamente provisória**.
 - Servidor Lua de diagnóstico na porta **5190**, apenas para teste em rede local.
@@ -14,6 +14,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 - **Fase 4:** o cliente pode carregar via TCP um formulário **sintético** do servidor de laboratório, preencher `input`/`textarea`/`select`, enviar tipo `P` e abrir a resposta JCL. O servidor não salva dados. Esse tipo de envio foi inspirado na classe original `handler.Submit` e na coleta da classe `n`, mas o endpoint e o conteúdo de resposta são nossos, não históricos.
 - **Fase 5:** histórico limitado de navegação preserva formulário, foco e rolagem para voltar com Esc/Backspace/0; erros de comunicação não descartam o documento atual. A tecla numérica 2/8/5/4/6 facilita testes com controle de telefone antigo. Um importador valida os três PNGs do JAR por hash e permite usar o logotipo original localmente, sem publicá-lo no GitHub.
 - **Fase 6:** seleção JCL (`select`) distingue os tipos 1 (única), 2 (múltipla), 3 (única) e 4 (compacta). Os padrões por quantidade de opções e a concatenação de valores múltiplos por vírgulas foram verificados nas classes `h` e `s` do JAR. O layout e os controles são uma aproximação própria, não uma captura pixel a pixel do Qeep. Veja `docs/selecoes-fase6.md`.
+- **Fase 8:** formulários curtos são centralizados verticalmente por padrão e `valign="top"` os alinha ao topo, como indicado por `j.class` e `h.class`. Comandos `lsk/rsk` preservam `cancel` e o modelo de tecla direita sem comando explícito ativa o foco. O menu contém **Composicao JCL (laboratorio)**, quatro telas sintéticas de comparação. Consulte `docs/composicao-fase8.md`.
 - Não existem ainda login, contas, chat, contatos, jogos ou telas históricas reconstruídos. A interface de demonstração **não deve ser confundida com uma tela original do Qeep**.
 
 ## Executar
@@ -46,6 +47,7 @@ client/lib/jcl_style.lua  Resolver de estilos do registry.ini (sem código remot
 client/lib/utf8_edit.lua  Edição de caracteres Unicode em LuaJIT
 client/lib/jcl_choices.lua Tipos e serialização de seleções JCL
 client/lib/jcl_history.lua Histórico de formulários/documentos com rolagem/foco
+client/lib/jcl_screen.lua Comandos Java ME e estado visual de softkeys
 client/lib/jcl_submit.lua Coleta segura de valores do formulário do laboratório
 client/lib/lab_host.lua  Validação de host local/rede privada
 client/lib/legacy_palette.lua Cores verificadas em registry.ini
@@ -53,7 +55,7 @@ client/fixtures/         Telas sintéticas exclusivamente de teste
 server/                   Servidor Lua de diagnóstico
 tests/                    Testes do codec
 tools/import_jar_assets.py Importação local verificada dos três PNGs históricos
-docs/                     Documentação e evidências (fases 1–6)
+docs/                     Documentação e evidências (fases 1–8)
 ```
 
 ## Próximos marcos
@@ -67,3 +69,7 @@ docs/                     Documentação e evidências (fases 1–6)
 ### Fase 7 — atlas e imagens locais
 
 O cliente pode desenhar recortes reais do atlas `kui/symbols.png` (12×180, células 12×6 usadas em `j.class`) e imagens locais por `<img src>` para os três PNGs conhecidos do JAR. Os originais continuam ignorados pelo Git; importe-os com `python3 tools/import_jar_assets.py <caminho-do-JAR>`. As posições atuais são experimentais: consulte [`docs/simbolos-e-imagens-fase7.md`](docs/simbolos-e-imagens-fase7.md).
+
+### Fase 8 — composição de telas
+
+`client/fixtures/composition.xml` contém quatro telas sintéticas para testar centralização vertical, `valign="top"`, listas longas e comandos com `cancel`. Abra **Composicao JCL (laboratorio)** no menu inicial. Veja [`docs/composicao-fase8.md`](docs/composicao-fase8.md).

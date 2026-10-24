@@ -14,6 +14,8 @@ jobs:
           lua5.4 tests/test_protocol.lua
           lua5.4 tests/test_jcl.lua
           lua5.4 tests/test_jcl_layout.lua
+          lua5.4 tests/test_jcl_screen.lua
+          lua5.4 tests/test_client_composition.lua
           lua5.4 tests/test_jcl_styles.lua
           lua5.4 tests/test_legacy_symbols.lua
           lua5.4 tests/test_jcl_choices.lua

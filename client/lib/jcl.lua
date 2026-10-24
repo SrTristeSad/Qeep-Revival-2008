@@ -141,7 +141,8 @@ local function items_from(node, out)
   local child_text = all_text(node)
   local label = a.label or a.clabel or child_text
   local item = {kind = tag, id = a.id, label = label,
-    href = a.href, style = a.style, focus = a.focus, focused = a.focused == 'true',
+    href = a.href, cancel = a.cancel == 'true' or (a.cancel == nil and tag == 'lsk'),
+    style = a.style, focus = a.focus, focused = a.focused == 'true',
     layout = a.layout, align = tonumber(a.align), flags = tonumber(a.flags) or 0}
   -- h.class gives text-link/list widgets these symbols if their label is absent.
   if a.label == nil and a.clabel == nil then

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jcl branding="Qeep Revival 2008">
+  <form id="start" title="Composicao JCL">
+    <p label="LABORATORIO - nao e uma tela historica" style="11"/>
+    <p label="Esta pagina curta fica centralizada se houver espaco."/>
+    <a label="Formulario alinhado ao topo" href="#top" focused="true"/>
+    <a label="Formulario curto (centro)" href="#center"/>
+    <a label="Lista longa para rolagem" href="#long"/>
+    <lsk label="Sair" cancel="true"/>
+    <rsk label="Abrir" cancel="false"/>
+  </form>
+  <form id="top" title="Valign top" valign="top">
+    <p label="Alinhamento superior verificado em h.class."/>
+    <button label="Retornar" href="#start"/>
+    <lsk label="Voltar" cancel="true"/>
+  </form>
+  <form id="center" title="Valign padrao">
+    <p label="Conteudo curto centralizado, como em j.class."/>
+    <button label="Inicio" href="#start"/>
+    <lsk label="Voltar" cancel="true"/>
+    <rsk label="Abrir selecao" cancel="false"/>
+  </form>
+  <form id="long" title="Rolagem e comandos">
+    <p label="Esta lista longa deve iniciar no topo."/>
+    <a label="Abrir pagina centralizada" href="#center" focused="true"/>
+    <li label="Linha 1"/><li label="Linha 2"/><li label="Linha 3"/>
+    <li label="Linha 4"/><li label="Linha 5"/><li label="Linha 6"/>
+    <li label="Linha 7"/><li label="Linha 8"/><li label="Linha 9"/>
+    <li label="Linha 10"/><li label="Linha 11"/><li label="Linha 12"/>
+    <button label="Voltar" href="#start"/>
+    <lsk label="Voltar" cancel="true"/>
+    <rsk label="Abrir" cancel="false"/>
+  </form>
+</jcl>

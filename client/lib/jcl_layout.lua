@@ -70,6 +70,26 @@ function M.build(form, font, width)
   result.total = math.max(0,y-3)
   return result
 end
+-- j.class centers short pages by default (j.B=true), while h.class
+-- changes j.B to false for form valign="top". This placement function
+-- deliberately leaves long/scrollable pages top-aligned.
+function M.place(result, viewport_height, valign)
+  assert(type(result)=='table' and type(result.entries)=='table')
+  viewport_height=math.max(0,tonumber(viewport_height) or 0)
+  -- Safe to call again after font size or screen dimensions change.
+  local old=result.topInset or 0
+  for _,entry in ipairs(result.entries) do entry.y=entry.y-old end
+  local content=result.total-old
+  local inset=0
+  if valign~='top' and content < viewport_height then
+    inset=math.floor((viewport_height-content)/2)
+  end
+  for _,entry in ipairs(result.entries) do entry.y=entry.y+inset end
+  result.topInset=inset
+  result.total=content+inset
+  result.valign=valign
+  return result
+end
 function M.choice_hit(layout, index, y, scroll)
   local actual = y + (scroll or 0)
   for _,entry in ipairs(layout.entries) do
