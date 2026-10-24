@@ -3,7 +3,7 @@
 local M = {}
 local utf8edit = require('utf8_edit')
 local people, sessions, messages = {}, {}, {}
-local nextId, MAX_PEOPLE, MAX_MESSAGES, MAX_IDLE = 1, 24, 160, 3600
+local nextId, messageSequence, MAX_PEOPLE, MAX_MESSAGES, MAX_IDLE = 1, 0, 24, 160, 3600
 local function escape(s)
   return (tostring(s):gsub('&','&amp;'):gsub('<','&lt;'):gsub('>','&gt;')
     :gsub('"','&quot;'):gsub("'",'&apos;'))
@@ -15,12 +15,12 @@ local function text_ok(s, maxBytes, maxChars)
 end
 local function trim(s) return (s:gsub('^%s+',''):gsub('%s+$','')) end
 local function reply_error(message) return {ok=false,payload=message} end
-local function xml(title, id, body, token)
+local function xml(title, id, body, token, extra)
   local prop=token and ('<prop n="guestSession" v="'..escape(token)..'"/>') or ''
+  for k,v in pairs(extra or {}) do prop=prop..'<prop n="'..escape(k)..'" v="'..escape(v)..'"/>' end
   return '<?xml version="1.0" encoding="UTF-8"?><jcl branding="Revival: social experimental">'..
     prop..'<form id="'..id..'" title="'..escape(title)..'" valign="top">'..body..'</form></jcl>'
 end
-local function msg_count() return #messages end
 local function get_person(req)
   local token=(req.properties or {}).session
   if type(token)~='string' or #token>128 then return nil end
@@ -94,6 +94,7 @@ local function chat_page(person, other)
       matches[#matches+1]=message
     end
   end
+  local revision=matches[#matches] and matches[#matches].sequence or 0
   local first=math.max(1,#matches-11)
   for i=first,#matches do
     local message=matches[i]
@@ -106,7 +107,8 @@ local function chat_page(person, other)
   parts[#parts+1]='<a label="Atualizar conversa" href="/revival/social/chat/'..other.id..'"/>'
   parts[#parts+1]='<lsk label="Pessoas" href="/revival/social/people"/>'
   parts[#parts+1]='<rsk label="Enviar" href="/revival/social/send/'..other.id..'"/>'
-  return xml('Conversa — laboratório','chat',table.concat(parts),person.token)
+  return xml('Conversa — laboratório','chat',table.concat(parts),person.token,
+    {chatPeer=tostring(other.id),chatRevision=tostring(revision)})
 end
 function M.handle(req)
   if type(req)~='table' or type(req.path)~='string' or type(req.kind)~='string' then
@@ -151,7 +153,101 @@ function M.handle(req)
     end
     return {ok=true,payload=chat_page(person,other)}
   end
-  peerid=p:match('^/revival/social/send/([1-9]%d*)$')
+  peerid=p:match('^/revival/social/poll/([1-9]%d*)
+  if peerid and req.kind=='P' then
+    local other=people[tonumber(peerid)]
+    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
+      return reply_error('Destinatário indisponível')
+    end
+    local props=req.properties or {}
+    for k in pairs(props) do
+      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
+        return reply_error('Campo não permitido')
+      end
+    end
+    local msg=type(props.message)=='string' and trim(props.message) or ''
+    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
+      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
+    end
+    messageSequence=messageSequence+1
+    messages[#messages+1]={from=person.id,to=other.id,text=msg,sequence=messageSequence}
+    if #messages>MAX_MESSAGES then table.remove(messages,1) end
+    return {ok=true,payload=chat_page(person,other)}
+  end
+  return reply_error('Rota social desconhecida')
+end
+return M
+)
+  if peerid and req.kind=='O' then
+    local other=people[tonumber(peerid)]
+    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
+      return reply_error('Destinatário indisponível')
+    end
+    local props=req.properties or {}
+    for k in pairs(props) do
+      if k~='session' and k~='since' then return reply_error('Campo não permitido') end
+    end
+    local since=props.since
+    if type(since)~='string' or #since>12 or not since:match('^%d+
+  if peerid and req.kind=='P' then
+    local other=people[tonumber(peerid)]
+    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
+      return reply_error('Destinatário indisponível')
+    end
+    local props=req.properties or {}
+    for k in pairs(props) do
+      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
+        return reply_error('Campo não permitido')
+      end
+    end
+    local msg=type(props.message)=='string' and trim(props.message) or ''
+    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
+      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
+    end
+    messages[#messages+1]={from=person.id,to=other.id,text=msg}
+    if #messages>MAX_MESSAGES then table.remove(messages,1) end
+    return {ok=true,payload=chat_page(person,other)}
+  end
+  return reply_error('Rota social desconhecida')
+end
+return M
+) then
+      return reply_error('Revisão inválida')
+    end
+    local revision=0
+    for _,message in ipairs(messages) do
+      if (message.from==person.id and message.to==other.id) or
+        (message.from==other.id and message.to==person.id) then
+        revision=message.sequence
+      end
+    end
+    if tonumber(since)==revision then return {ok=true,unchanged=true,payload=''} end
+    return {ok=true,payload=chat_page(person,other)}
+  end
+  peerid=p:match('^/revival/social/send/([1-9]%d*)
+  if peerid and req.kind=='P' then
+    local other=people[tonumber(peerid)]
+    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
+      return reply_error('Destinatário indisponível')
+    end
+    local props=req.properties or {}
+    for k in pairs(props) do
+      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
+        return reply_error('Campo não permitido')
+      end
+    end
+    local msg=type(props.message)=='string' and trim(props.message) or ''
+    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
+      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
+    end
+    messages[#messages+1]={from=person.id,to=other.id,text=msg}
+    if #messages>MAX_MESSAGES then table.remove(messages,1) end
+    return {ok=true,payload=chat_page(person,other)}
+  end
+  return reply_error('Rota social desconhecida')
+end
+return M
+)
   if peerid and req.kind=='P' then
     local other=people[tonumber(peerid)]
     if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then

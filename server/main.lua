@@ -39,7 +39,8 @@ while true do
             else routed, answer = pcall(routes.handle, req, labxml) end
             if not routed then answer={ok=false,payload='Server route error'} end
             local reply = protocol.encodeReply('R', req.path,
-              {ok = answer.ok and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-9'},
+              {ok = answer.ok and 'true' or 'false', unchanged = answer.unchanged and 'true' or 'false',
+                server = 'Qeep-Revival-2008', version = 'phase-10'},
               answer.payload)
             -- send() may write only part of the frame; retry until complete.
             local offset=1
