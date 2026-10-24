@@ -23,7 +23,7 @@ function M.build(form, font, width)
       if item.marker then title = item.marker .. (title ~= '' and (' '..title) or '') end
       local detail, imageInfo, imageY
       if kind == 'input' or kind == 'textarea' then
-        detail = tostring(item.value or '')
+        detail = item.secret and string.rep('*', math.min(tonumber(#(item.value or '')) or 0, 48)) or tostring(item.value or '')
       elseif kind == 'select' then
         local option = item.options and item.options[item.selected or 1]
         if item.choiceType == 4 then

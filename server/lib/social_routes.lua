@@ -1,8 +1,11 @@
--- Fase 9: original ephemeral LAN-only social prototype. NOT historical Qeep backend.
--- No passwords, persistence, encryption, registration or identity verification.
+-- Invented LAN-only social prototype, NOT the historical Qeep backend.
+-- Phase 12: durable accounts with randomly generated access codes; chat remains ephemeral.
 local M = {}
 local utf8edit = require('utf8_edit')
 local people, sessions, messages = {}, {}, {}
+local accountStore = nil
+local accountLib = require('account_store')
+function M.configure_accounts(store) accountStore=store end
 local nextId, messageSequence, MAX_PEOPLE, MAX_MESSAGES, MAX_IDLE = 1, 0, 24, 160, 3600
 local function escape(s)
   return (tostring(s):gsub('&','&amp;'):gsub('<','&lt;'):gsub('>','&gt;')
@@ -51,17 +54,20 @@ end
 local function welcome()
   return xml('Visitantes — laboratório','welcome',
     '<p label="Rede social local demonstrativa; NÃO é uma tela recuperada de 2008."/>'..
-    '<p label="Sem senha. Apelidos e mensagens se perdem quando o servidor fecha."/>'..
+    '<p label="Visitantes e mensagens se perdem quando o servidor fecha."/>'..
     '<input id="nickname" label="Seu apelido de visitante" value="" len="24"/>'..
     '<button id="join" label="Entrar como visitante" href="/revival/social/join" focused="true"/>'..
+    '<a label="Criar conta local (laboratório)" href="/revival/social/register"/>'..
+    '<a label="Entrar com código de acesso" href="/revival/social/login"/>'..
     '<lsk label="Voltar" href="/revival/page/lab"/>')
 end
 local function home(person)
   return xml('Sala social — laboratório','home',
-    '<p label="Olá, '..escape(person.name)..'. Você é visitante temporário."/>'..
+    '<p label="Olá, '..escape(person.name)..'. '..(person.account and 'Conta local persistente.' or 'Você é visitante temporário.')..'"/>'..
     '<a label="Pessoas conectadas" href="/revival/social/people" focused="true"/>'..
     '<a label="Atualizar sala" href="/revival/social/home"/>'..
     '<p label="Mensagens não são salvas em disco. Não compartilhe dados pessoais."/>'..
+    '<a label="Encerrar sessão" href="/revival/social/logout"/>'..
     '<lsk label="Menu de testes" href="/revival/page/lab"/>',person.token)
 end
 local function people_page(person)
@@ -110,6 +116,50 @@ local function chat_page(person, other)
   return xml('Conversa — laboratório','chat',table.concat(parts),person.token,
     {chatPeer=tostring(other.id),chatRevision=tostring(revision)})
 end
+local function register_page()
+  return xml('Criar conta local — laboratório','register',
+    '<p label="Serviço de teste local. Sem TLS. Não use dados pessoais."/>'..
+    '<p label="Você receberá um código aleatório de acesso, mostrado uma única vez."/>'..
+    '<input id="username" label="Usuário: 3–24 letras minúsculas, números e _" len="24"/>'..
+    '<button id="register" label="Criar conta" href="/revival/social/register/submit"/>'..
+    '<lsk label="Voltar" href="/revival/social/start"/>')
+end
+local function login_page()
+  return xml('Entrar na conta local — laboratório','login',
+    '<p label="Somente rede local de teste, sem criptografia de transporte."/>'..
+    '<input id="username" label="Nome de usuário" len="24"/>'..
+    '<input id="accessCode" label="Código de acesso (48 caracteres)" len="48" secret="true"/>'..
+    '<button id="login" label="Entrar" href="/revival/social/login/submit"/>'..
+    '<lsk label="Voltar" href="/revival/social/start"/>')
+end
+local function active_count()
+  local count=0
+  for id,person in pairs(people) do
+    if os.time()-person.lastSeen>MAX_IDLE then
+      sessions[person.token]=nil;people[id]=nil
+    else count=count+1 end
+  end
+  return count
+end
+local function new_person(name,account)
+  if active_count()>=MAX_PEOPLE then return nil,'Limite de usuários online atingido' end
+  local token
+  if account then
+    token=accountLib.session_token()
+    if not token then return nil,'Fonte de aleatoriedade segura indisponível' end
+  else token=gen_token() end
+  while sessions[token] do
+    token=account and accountLib.session_token() or gen_token()
+    if not token then return nil,'Fonte de aleatoriedade segura indisponível' end
+  end
+  local person={id=nextId,name=name,account=account,token=token,lastSeen=os.time()}
+  nextId=nextId+1;people[person.id]=person;sessions[token]=person
+  return person
+end
+local function allowed(props,keys)
+  for k in pairs(props) do if not keys[k] then return false end end
+  return true
+end
 function M.handle(req)
   if type(req)~='table' or type(req.path)~='string' or type(req.kind)~='string' then
     return reply_error('Requisição inválida')
@@ -130,19 +180,54 @@ function M.handle(req)
     if props.submitId~='join' or #name<2 or not text_ok(name,80,24) then
       return reply_error('Apelido inválido (2 a 24 caracteres)')
     end
-    local active=0
-    for _,user in pairs(people) do
-      if os.time()-user.lastSeen<=MAX_IDLE then active=active+1 end
+    local person,err=new_person(name,nil)
+    if not person then return reply_error(err) end
+    return {ok=true,payload=home(person)}
+  end
+  if req.kind=='O' and (p=='/revival/social/register' or p=='/revival/social/login') then
+    return {ok=true,payload=p=='/revival/social/register' and register_page() or login_page()}
+  end
+  if p=='/revival/social/register/submit' and req.kind=='P' then
+    if not accountStore then return reply_error('Cadastro local não habilitado') end
+    local props=req.properties or {}
+    if not allowed(props,{username=true,submitId=true,lang=true}) or props.submitId~='register' then
+      return reply_error('Campos de cadastro inválidos')
     end
-    if active>=MAX_PEOPLE then return reply_error('Limite de visitantes atingido') end
-    local token=gen_token()
-    while sessions[token] do token=gen_token() end
-    local person={id=nextId,name=name,token=token,lastSeen=os.time()}
-    nextId=nextId+1;people[person.id]=person;sessions[token]=person
+    local username=props.username
+    if not accountLib.allowed(username) then return reply_error('Nome de usuário inválido') end
+    if active_count()>=MAX_PEOPLE then return reply_error('Limite de usuários online atingido') end
+    local code,err=accountLib.register(accountStore,username)
+    if not code then return reply_error(err) end
+    local person,personErr=new_person(username,username)
+    if not person then return reply_error(personErr) end
+    local body='<p label="Conta local criada: '..escape(username)..'"/>'..
+      '<p label="Guarde este código de 48 caracteres. Ele NÃO será mostrado novamente."/>'..
+      '<p label="'..code..'"/>'..
+      '<p label="O código dá acesso à conta. Não compartilhe. Somente servidor local sem TLS."/>'..
+      '<a label="Abrir sala social" href="/revival/social/home"/>'..
+      '<lsk label="Menu" href="/revival/social/start"/>'
+    return {ok=true,payload=xml('Código de acesso — laboratório','credentials',body,person.token)}
+  end
+  if p=='/revival/social/login/submit' and req.kind=='P' then
+    if not accountStore then return reply_error('Login local não habilitado') end
+    local props=req.properties or {}
+    if not allowed(props,{username=true,accessCode=true,submitId=true,lang=true}) or props.submitId~='login' then
+      return reply_error('Campos de login inválidos')
+    end
+    if not accountLib.verify(accountStore,props.username,props.accessCode) then
+      return reply_error('Usuário ou código inválido')
+    end
+    local person,err=new_person(props.username,props.username)
+    if not person then return reply_error(err) end
     return {ok=true,payload=home(person)}
   end
   local person=get_person(req)
   if not person then return reply_error('Sessão expirada. Volte e entre como visitante.') end
+  if req.kind=='O' and p=='/revival/social/logout' then
+    sessions[person.token]=nil;people[person.id]=nil
+    local page=welcome():gsub('<form ', '<prop n="sessionClear" v="true"/><form ',1)
+    return {ok=true,payload=page}
+  end
   if req.kind=='O' and p=='/revival/social/home' then return {ok=true,payload=home(person)} end
   if req.kind=='O' and p=='/revival/social/people' then return {ok=true,payload=people_page(person)} end
   local peerid=p:match('^/revival/social/chat/([1-9]%d*)$')

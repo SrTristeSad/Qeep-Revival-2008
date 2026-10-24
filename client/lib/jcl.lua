@@ -155,6 +155,7 @@ local function items_from(node, out)
   end
   if tag == 'input' or tag == 'textarea' then
     item.value = (tag == 'input' and a.value or all_text(node)) or ''
+    item.secret = a.secret == 'true' -- laboratory-only masked field extension
     item.length = math.max(0, math.min(tonumber(a.len) or (tag == 'input' and 30 or 2000), 2000))
     item.type = tonumber(a.type) or 0
     item.mode = tonumber(a.mode) or 0

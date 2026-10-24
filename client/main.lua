@@ -96,8 +96,9 @@ local function openJCL(source, preservePrevious, socialResponse)
   else
     jcl_history.clear(history)
   end
-  if socialResponse and result.props and result.props.guestSession then
-    guestSession=result.props.guestSession
+  if socialResponse and result.props then
+    if result.props.sessionClear=='true' then guestSession=nil
+    elseif result.props.guestSession then guestSession=result.props.guestSession end
   end
   cancelPoll()
   cancelSend()
@@ -131,7 +132,8 @@ local function socketRequest(path, kind, properties)
   local props={}
   for k,v in pairs(properties or {lang='pt-BR'}) do props[k]=v end
   if path:sub(1,16)=='/revival/social/' and path~='/revival/social/start'
-    and path~='/revival/social/join' and guestSession then props.session=guestSession end
+    and path~='/revival/social/join' and path~='/revival/social/register/submit'
+    and path~='/revival/social/login/submit' and guestSession then props.session=guestSession end
   local request=protocol.encodeRequest(kind or 'O',path,props,'')
   local sent,sendErr,last=conn:send(request)
   if not sent and (not last or last<#request) then conn:close();return nil,sendErr end
@@ -182,7 +184,8 @@ local function navigate(href, activated)
     local source,err=socketRequest(href)
     if source then openJCL(source,true) else showError('Falha no servidor: '..tostring(err)) end
   elseif href:match('^/revival/social/') then
-    local submitting=href=='/revival/social/join' or href:match('^/revival/social/send/[1-9]%d*$')
+    local authSubmit=href=='/revival/social/register/submit' or href=='/revival/social/login/submit'
+    local submitting=href=='/revival/social/join' or authSubmit or href:match('^/revival/social/send/[1-9]%d*$')
     local props={}
     if submitting then
       local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
@@ -203,7 +206,7 @@ local function navigate(href, activated)
       return
     end
     local source,err=socketRequest(href,submitting and 'P' or 'O',props)
-    if source then openJCL(source,true,true) else showError('Falha social: '..tostring(err)) end
+    if source then openJCL(source,not authSubmit,true) else showError('Falha social: '..tostring(err)) end
   elseif href=='/revival/submit/echo' then
     local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
     if not ok then return showError(fields) end
@@ -315,7 +318,9 @@ local function softkey(kind)
     -- An unproductive root Back command should still leave the laboratory.
     if cmd.cancel and cmd.href=='#'..tostring(form.id or '') then return goBack() end
     local button=nil
-    if cmd.href=='/revival/submit/echo' or cmd.href=='/revival/social/join' or cmd.href:match('^/revival/social/send/[1-9]%d*$') then
+    if cmd.href=='/revival/submit/echo' or cmd.href=='/revival/social/join' or
+      cmd.href=='/revival/social/register/submit' or cmd.href=='/revival/social/login/submit' or
+      cmd.href:match('^/revival/social/send/[1-9]%d*$') then
       for _,candidate in ipairs(form.items) do
         if candidate.kind=='button' and candidate.href==cmd.href then button=candidate;break end
       end

@@ -2,7 +2,10 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 11 — envio assíncrono e servidor TCP cooperativo (protótipo)
+## Estado atual: fase 12 — cadastro e login locais com código de acesso persistente (protótipo)
+
+- **Fase 12:** contas persistentes locais, entrada por código aleatório de 192 bits, login/logout e visitantes preservados. O servidor grava `server/data/accounts.db` (ignorado pelo Git). Não há TLS nem recuperação de código; somente laboratório privado Linux/POSIX. Veja [documentação da Fase 12](docs/contas-fase12.md).
+
 
 - Cliente LÖVE inicial com controles por teclado, mouse e toque, renderização lógica em **240 × 320**, paleta extraída de `registry.ini` e tela **explicitamente provisória**.
 - Servidor Lua de diagnóstico na porta **5190**, apenas para teste em rede local.

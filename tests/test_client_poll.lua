@@ -65,7 +65,7 @@ end
 love.load()
 for _=1,6 do love.keypressed('down') end
 love.keypressed('return') -- start
-love.keypressed('down');love.keypressed('return');love.textinput('Alex');love.keypressed('return')
+for _=1,3 do love.keypressed('down') end;love.keypressed('return');love.textinput('Alex');love.keypressed('return')
 love.keypressed('down');love.keypressed('return') -- join
 assert(lastToken)
 love.keypressed('return') -- people

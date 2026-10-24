@@ -53,7 +53,7 @@ for _=1,6 do love.keypressed('down') end
 love.keypressed('return')
 check(shown('Visitantes'))
 check(sentReq[#sentReq].path=='/revival/social/start')
-love.keypressed('down') -- move from focused join to nickname
+for _=1,3 do love.keypressed('down') end -- join -> new account links -> nickname
 love.keypressed('return');love.textinput('Alex');love.keypressed('return')
 love.keypressed('down');love.keypressed('return') -- submit join
 check(shown('Sala social'))

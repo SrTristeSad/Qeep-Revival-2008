@@ -8,3 +8,8 @@
 .DS_Store
 client/assets/original/
 reverse-engineering/original/
+
+# Private persistent account store (never commit)
+server/data/*.db
+server/data/*.db.tmp
+server/data/*.db.bak

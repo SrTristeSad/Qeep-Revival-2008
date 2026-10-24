@@ -4,6 +4,10 @@ local protocol = require('protocol')
 package.path = 'server/lib/?.lua;' .. package.path
 local routes = require('lab_routes')
 local social = require('social_routes')
+local account_store = require('account_store')
+local db,dbErr=account_store.new('server/data/accounts.db')
+assert(db, 'Account storage unavailable: '..tostring(dbErr))
+social.configure_accounts(db)
 local ok, socket = pcall(require, 'socket')
 if not ok then
   io.stderr:write('LuaSocket missing. Install: luarocks install luasocket\n')
@@ -24,9 +28,9 @@ local function route(req)
 end
 local loop=tcp_loop.new(listener,socket,protocol,route)
 print(('Qeep Revival 2008 diagnostic server on %s:%d'):format(host, port))
-print('Concurrent local laboratory only. No passwords, persistent messages or TLS.')
+print('Local laboratory only: persistent access-code accounts; ephemeral messages; NO TLS.')
 if host ~= '127.0.0.1' and host ~= 'localhost' then
-  print('WARNING: guest prototype is NOT secure for public exposure.')
+  io.stderr:write('WARNING: access codes cross TCP in plaintext. DO NOT expose this service to untrusted networks.\n')
 end
 local last=socket.gettime()
 while true do
