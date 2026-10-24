@@ -8,6 +8,7 @@ local legacy = require('lib.legacy_palette')
 local jcl_style = require('lib.jcl_style')
 local jcl_submit = require('lib.jcl_submit')
 local lab_host = require('lib.lab_host')
+local jcl_history = require('lib.jcl_history')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -19,6 +20,9 @@ local options = {
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touches = {}
+local history = jcl_history.new(16)
+local previousView = 'menu'
+local originalLogo = nil
 local function paint(color) love.graphics.setColor(color) end
 local function rect(mode,x,y,w,h) love.graphics.rectangle(mode,x,y,w,h) end
 local function text(s,x,y,width,align,useBig,color)
@@ -36,12 +40,18 @@ local function localPoint(x,y)
   return (x-ox)/scale,(y-oy)/scale
 end
 local function returnMenu()
-  view='menu';scroll=0;computed=nil
+  view='menu';scroll=0;computed=nil;document=nil
+  jcl_history.clear(history)
   love.keyboard.setTextInput(false)
 end
 local function showError(message)
+  if view ~= 'status' then previousView=view end
   status=tostring(message);view='status'
   love.keyboard.setTextInput(false)
+end
+local function dismissStatus()
+  if previousView=='jcl' and document then view='jcl'
+  else returnMenu() end
 end
 local function refreshLayout(ensure)
   if not document then return end
@@ -49,13 +59,28 @@ local function refreshLayout(ensure)
   if ensure then scroll=layout.ensure_visible(computed,document.selected,scroll,VH)
   else scroll=layout.clamp_scroll(computed,scroll,VH) end
 end
-local function openJCL(source)
+local function openJCL(source, preservePrevious)
   local ok,result=pcall(jcl.parse,source)
-  if not ok then return showError(result) end
+  if not ok then showError(result);return false end
+  if preservePrevious and view=='jcl' and document then
+    jcl_history.push(history,document,scroll)
+  else
+    jcl_history.clear(history)
+  end
   document=jcl_view.new(result)
   view='jcl';scroll=0
   love.keyboard.setTextInput(false)
   refreshLayout(true)
+  return true
+end
+local function goBack()
+  local prior,priorScroll=jcl_history.pop(history)
+  if prior then
+    document=prior
+    view='jcl';scroll=priorScroll
+    love.keyboard.setTextInput(false)
+    refreshLayout(false)
+  else returnMenu() end
 end
 local function socketRequest(path, kind, properties)
   if not lab_host.valid(serverHost) then return nil,'Use somente IP de rede privada ou localhost.' end
@@ -95,17 +120,25 @@ end
 local function navigate(href, activated)
   if type(href)~='string' or href=='' then return end
   if href:sub(1,1)=='#' then
-    if not jcl_view.next_form(document,href:sub(2)) then return showError('Formulario JCL ausente: '..href) end
+    local id=href:sub(2)
+    local target
+    for i,form in ipairs(document.document.forms) do
+      if form.id==id then target=i;break end
+    end
+    if not target then return showError('Formulario JCL ausente: '..href) end
+    if target==document.page then return end
+    jcl_history.push(history,document,scroll)
+    jcl_view.next_form(document,id)
     scroll=0;refreshLayout(true)
   elseif href=='/revival/page/lab' or href=='/revival/page/submit' then
     local source,err=socketRequest(href)
-    if source then openJCL(source) else showError('Falha no servidor: '..tostring(err)) end
+    if source then openJCL(source,true) else showError('Falha no servidor: '..tostring(err)) end
   elseif href=='/revival/submit/echo' then
     local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
     if not ok then return showError(fields) end
     fields.lang='pt-BR'
     local source,err=socketRequest(href,'P',fields)
-    if source then openJCL(source) else showError('Falha ao enviar: '..tostring(err)) end
+    if source then openJCL(source,true) else showError('Falha ao enviar: '..tostring(err)) end
   else
     -- Restricted to explicit local laboratory routes; never contact legacy endpoints.
     showError('Endereco nao permitido no laboratorio:\n'..href)
@@ -116,6 +149,10 @@ local function softkey(kind)
   for _,item in ipairs(form.items) do
     if item.kind==kind then
       if item.href and item.href~='' then
+        -- A self-referential Back softkey on the root fixture must not trap the user.
+        if kind=='lsk' and item.href=='#'..tostring(form.id or '') then
+          return goBack()
+        end
         local button=nil
         if item.href=='/revival/submit/echo' then
           for _,candidate in ipairs(form.items) do
@@ -127,7 +164,7 @@ local function softkey(kind)
       return
     end
   end
-  if kind=='lsk' then returnMenu() end
+  if kind=='lsk' then goBack() end
 end
 local function activateJCL()
   local active=jcl_view.item(document)
@@ -139,6 +176,10 @@ end
 function love.load()
   love.graphics.setDefaultFilter('nearest','nearest')
   font,big=love.graphics.newFont(12),love.graphics.newFont(17)
+  if love.graphics.newImage then
+    local ok,image=pcall(love.graphics.newImage,'assets/original/logo.png')
+    if ok then originalLogo=image end
+  end
   local saved=love.filesystem.read('host.txt')
   if saved and #saved<128 then
     local clean=saved:gsub('%s+','')
@@ -209,8 +250,14 @@ function love.draw()
   if view=='jcl' and document then
     drawJCL()
   else
-    text('Laboratorio Lua / LOVE',11,38,W-22,'center',true)
-    text('Interface provisoria; nao e tela original',7,63,W-14,'center')
+    if view=='menu' and originalLogo and love.graphics.draw then
+      paint(c.white)
+      love.graphics.draw(originalLogo,math.floor((W-originalLogo:getWidth())/2),28)
+      text('Laboratorio (nao historico)',7,72,W-14,'center')
+    else
+      text('Laboratorio Lua / LOVE',11,38,W-22,'center',true)
+      text('Interface provisoria; nao e tela original',7,63,W-14,'center')
+    end
     paint(c.olive);rect('fill',9,83,W-18,1)
     if view=='menu' then
       for i,option in ipairs(options) do
@@ -242,6 +289,13 @@ function love.draw()
   love.graphics.pop()
 end
 function love.keypressed(key)
+  -- Optional J2ME-like numeric keyboard controls; no 1:1 keypad mapping claimed.
+  if view=='jcl' or view=='menu' then
+    local numeric={['2']='up',['8']='down',['5']='return',['4']='left',
+      ['6']='right',['0']='escape',kp2='up',kp8='down',kp5='return',
+      kp4='left',kp6='right',kp0='escape'}
+    if not (document and document.editing) then key=numeric[key] or key end
+  end
   if view=='jcl' and document then
     if document.editing then
       if key=='return' or key=='kpenter' or key=='escape' then
@@ -254,7 +308,7 @@ function love.keypressed(key)
     elseif key=='return' or key=='kpenter' or key=='space' then activateJCL()
     elseif key=='left' then softkey('lsk')
     elseif key=='right' then softkey('rsk')
-    elseif key=='escape' then returnMenu() end
+    elseif key=='escape' or key=='backspace' then goBack() end
     return
   end
   if view=='menu' then
@@ -273,6 +327,8 @@ function love.keypressed(key)
       end
     elseif key=='backspace' then serverHost=serverHost:sub(1,-2)
     elseif key=='escape' then returnMenu() end
+  elseif view=='status' and (key=='escape' or key=='return' or key=='kpenter') then
+    dismissStatus()
   elseif key=='escape' or key=='return' or key=='kpenter' then returnMenu() end
 end
 function love.textinput(t)

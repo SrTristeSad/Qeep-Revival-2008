@@ -19,6 +19,10 @@ jobs:
           lua5.4 tests/test_submit.lua
           lua5.4 tests/test_lab_host.lua
           lua5.4 tests/test_lab_client.lua
+          lua5.4 tests/test_jcl_history.lua
+          lua5.4 tests/test_client_history.lua
+          lua5.4 tests/test_original_logo.lua
+          python3 tests/test_import_jar_assets.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
       - name: Test real TCP localhost roundtrip
         run: |

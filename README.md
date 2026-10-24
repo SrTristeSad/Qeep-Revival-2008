@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 4 — formulários cliente/servidor (protótipo)
+## Estado atual: fase 5 — navegação JCL com histórico e assets opcionais (protótipo)
 
 - Cliente LÖVE inicial com controles por teclado, mouse e toque, renderização lógica em **240 × 320**, paleta extraída de `registry.ini` e tela **explicitamente provisória**.
 - Servidor Lua de diagnóstico na porta **5190**, apenas para teste em rede local.
@@ -12,6 +12,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 - Paleta e tabela de estilos transcritas de `registry.ini` (somente informação técnica, sem copiar recursos protegidos). O cliente interpreta `style="11"`/`style="s11"` quando o identificador consta dessa tabela. A **interpretação de preenchimento e contorno é experimental**, não uma tela original recuperada.
 - O parser preserva texto misto na ordem original; links e listas sem rótulo recebem marcadores `>` e `*`; separadores respeitam `w` (90 por padrão), conforme o bytecode `h.class`. Uma quarta tela de laboratório demonstra esses detalhes.
 - **Fase 4:** o cliente pode carregar via TCP um formulário **sintético** do servidor de laboratório, preencher `input`/`textarea`/`select`, enviar tipo `P` e abrir a resposta JCL. O servidor não salva dados. Esse tipo de envio foi inspirado na classe original `handler.Submit` e na coleta da classe `n`, mas o endpoint e o conteúdo de resposta são nossos, não históricos.
+- **Fase 5:** histórico limitado de navegação preserva formulário, foco e rolagem para voltar com Esc/Backspace/0; erros de comunicação não descartam o documento atual. A tecla numérica 2/8/5/4/6 facilita testes com controle de telefone antigo. Um importador valida os três PNGs do JAR por hash e permite usar o logotipo original localmente, sem publicá-lo no GitHub.
 - Não existem ainda login, contas, chat, contatos, jogos ou telas históricas reconstruídos. A interface de demonstração **não deve ser confundida com uma tela original do Qeep**.
 
 ## Executar
@@ -20,9 +21,11 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 
 **Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde a `/revival/ping`, `/revival/page/lab`, `/revival/page/submit` e `/revival/submit/echo` e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O teste de rede não implementa autenticação.
 
+**Recursos gráficos originais opcionais:** com o JAR de referência em mãos, execute `python tools/import_jar_assets.py qeep-94724.jar` na raiz. Ele valida os hashes antes de extrair os três PNGs para `client/assets/original/` (ignorados no Git). O logotipo passa a aparecer na tela inicial de laboratório. Para mais informações, veja `docs/navegacao-e-assets-fase5.md`.
+
 **Android:** a base cliente está escrita para LÖVE Android, mas **ainda não há APK compilado nem testes em dispositivo**. Será preciso embalar `client/` com a distribuição LÖVE Android compatível e verificar LuaSocket no pacote final.
 
-**Testes independentes:** execute os testes `tests/test_protocol.lua`, `test_jcl.lua`, `test_jcl_layout.lua`, `test_jcl_styles.lua`, `test_client_smoke.lua`, `test_submit.lua`, `test_lab_host.lua` e `test_lab_client.lua` com `lua` (ou `texlua`) na raiz. Os testes de interface simulados não exercitam GPU real. Com o servidor executando e LuaSocket instalado, execute também `lua tests/test_socket_roundtrip.lua` para o teste TCP real.
+**Testes independentes:** execute os testes `tests/test_protocol.lua`, `test_jcl.lua`, `test_jcl_layout.lua`, `test_jcl_styles.lua`, `test_client_smoke.lua`, `test_submit.lua`, `test_lab_host.lua` , `test_lab_client.lua`, `test_jcl_history.lua`, `test_client_history.lua` e `test_original_logo.lua` com `lua` (ou `texlua`) na raiz. Os testes de interface simulados não exercitam GPU real. Com o servidor executando e LuaSocket instalado, execute também `lua tests/test_socket_roundtrip.lua` para o teste TCP real.
 
 ## Evidências e limites
 
@@ -40,13 +43,15 @@ client/lib/jcl_view.lua   Estado e navegação dos formulários JCL
 client/lib/jcl_layout.lua Layout e hit-testing, sem dependência de GPU
 client/lib/jcl_style.lua  Resolver de estilos do registry.ini (sem código remoto)
 client/lib/utf8_edit.lua  Edição de caracteres Unicode em LuaJIT
+client/lib/jcl_history.lua Histórico de formulários/documentos com rolagem/foco
 client/lib/jcl_submit.lua Coleta segura de valores do formulário do laboratório
 client/lib/lab_host.lua  Validação de host local/rede privada
 client/lib/legacy_palette.lua Cores verificadas em registry.ini
 client/fixtures/         Telas sintéticas exclusivamente de teste
 server/                   Servidor Lua de diagnóstico
 tests/                    Testes do codec
-docs/                     Documentação e evidências (`jcl-fase1.md`, `renderizacao-fase2.md`, `estilos-fase3.md`, `formularios-fase4.md`)
+tools/import_jar_assets.py Importação local verificada dos três PNGs históricos
+docs/                     Documentação e evidências (fases 1–5)
 ```
 
 ## Próximos marcos
