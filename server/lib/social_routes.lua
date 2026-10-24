@@ -1,7 +1,7 @@
 -- Fase 9: original ephemeral LAN-only social prototype. NOT historical Qeep backend.
 -- No passwords, persistence, encryption, registration or identity verification.
 local M = {}
-local utf8edit = require('lib.utf8_edit')
+local utf8edit = require('utf8_edit')
 local people, sessions, messages = {}, {}, {}
 local nextId, MAX_PEOPLE, MAX_MESSAGES, MAX_IDLE = 1, 24, 160, 3600
 local function escape(s)
