@@ -65,6 +65,8 @@ check(shown('Conversa'))
 love.keypressed('return') -- first textarea
 love.textinput('Olá, Bia!');love.keypressed('return')
 love.keypressed('down');love.keypressed('return') -- send button
+check(shown('Enviando mensagem')) -- non-blocking: not yet delivered
+love.update(0.05)
 check(sentReq[#sentReq].path:find('/revival/social/send/',1,true))
 check(sentReq[#sentReq].properties.message=='Olá, Bia!')
 check(shown('Você: Olá, Bia!'))

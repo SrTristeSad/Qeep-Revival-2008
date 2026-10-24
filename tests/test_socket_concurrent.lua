@@ -1,0 +1,22 @@
+-- Real localhost TCP acceptance test: a partially sent request must not block another client.
+package.path='client/?.lua;client/lib/?.lua;'..package.path
+local socket=require('socket')
+local codec=require('lib.protocol')
+local slow=assert(socket.tcp());slow:settimeout(3)
+assert(slow:connect('127.0.0.1',5190))
+local pending=codec.encodeRequest('O','/revival/ping',{},'')
+assert(slow:send(pending:sub(1,2))) -- do NOT complete the frame yet
+local quick=assert(socket.tcp());quick:settimeout(3)
+assert(quick:connect('127.0.0.1',5190))
+assert(quick:send(codec.encodeRequest('O','/revival/page/lab',{},'')))
+local first,err=quick:receive('*a')
+quick:close()
+assert(first,'fast client starved by slow one: '..tostring(err))
+local reply=codec.decodeReply(first)
+assert(reply.kind=='R' and reply.path=='/revival/page/lab' and reply.properties.ok=='true')
+assert(slow:send(pending:sub(3)))
+local second,why=slow:receive('*a')
+slow:close()
+assert(second,'slow client could not finish: '..tostring(why))
+assert(codec.decodeReply(second).payload=='PONG')
+print('OK: two real TCP clients served without head-of-line blocking')

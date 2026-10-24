@@ -29,6 +29,8 @@ jobs:
           lua5.4 tests/test_social_routes.lua
           lua5.4 tests/test_client_social.lua
           lua5.4 tests/test_social_poll.lua
+          lua5.4 tests/test_social_send.lua
+          lua5.4 tests/test_tcp_loop.lua
           lua5.4 tests/test_client_poll.lua
           lua5.4 tests/test_original_logo.lua
           python3 tests/test_import_jar_assets.py
@@ -41,3 +43,4 @@ jobs:
           sleep 1
           lua5.4 tests/test_socket_roundtrip.lua
           lua5.4 tests/test_socket_social.lua
+          lua5.4 tests/test_socket_concurrent.lua

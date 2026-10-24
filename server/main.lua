@@ -15,51 +15,23 @@ assert(port and port >= 1 and port <= 65535, 'invalid port')
 local labfile = assert(io.open('client/fixtures/lab.xml', 'rb'), 'start server from repository root')
 local labxml = labfile:read('*a')
 labfile:close()
+local tcp_loop=require('tcp_loop')
 local listener, e = socket.bind(host, port)
 assert(listener, e)
-listener:settimeout(1)
+local function route(req)
+  if req.path:sub(1,16)=='/revival/social/' then return social.handle(req) end
+  return routes.handle(req,labxml)
+end
+local loop=tcp_loop.new(listener,socket,protocol,route)
 print(('Qeep Revival 2008 diagnostic server on %s:%d'):format(host, port))
-print('Local laboratory: temporary visitor nicknames; no passwords or saved history.')
-if host ~= '127.0.0.1' and host ~= 'localhost' then print('WARNING: guest prototype is NOT secure for public exposure.') end
+print('Concurrent local laboratory only. No passwords, persistent messages or TLS.')
+if host ~= '127.0.0.1' and host ~= 'localhost' then
+  print('WARNING: guest prototype is NOT secure for public exposure.')
+end
+local last=socket.gettime()
 while true do
-  local peer = listener:accept()
-  if peer then
-    peer:settimeout(3)
-    local prefix, reason = peer:receive(4)
-    if prefix then
-      local n = prefix:byte(1) * 16777216 + prefix:byte(2) * 65536 + prefix:byte(3) * 256 + prefix:byte(4)
-      if n > 0 and n <= protocol.MAX_FRAME then
-        local bytes = peer:receive(n)
-        if bytes then
-          local success, req = pcall(protocol.decodeRequest, prefix .. bytes)
-          if success then
-            local isSocial = req.path:sub(1,16)=='/revival/social/'
-            local routed, answer
-            if isSocial then routed, answer = pcall(social.handle, req)
-            else routed, answer = pcall(routes.handle, req, labxml) end
-            if not routed then answer={ok=false,payload='Server route error'} end
-            local reply = protocol.encodeReply('R', req.path,
-              {ok = answer.ok and 'true' or 'false', unchanged = answer.unchanged and 'true' or 'false',
-                server = 'Qeep-Revival-2008', version = 'phase-10'},
-              answer.payload)
-            -- send() may write only part of the frame; retry until complete.
-            local offset=1
-            while offset<=#reply do
-              local sent, write_error, last = peer:send(reply, offset)
-              if not sent then
-                if last and last>=offset then offset=last+1
-                else io.stderr:write('Reply write: '..tostring(write_error)..'\n');break end
-              else offset=sent+1 end
-            end
-            print(req.kind, req.path, answer.ok and 'OK' or 'REJECTED')
-          else
-            io.stderr:write('Invalid synthetic packet: ' .. tostring(req) .. '\n')
-          end
-        end
-      end
-    elseif reason ~= 'closed' then
-      io.stderr:write('Client read: ' .. tostring(reason) .. '\n')
-    end
-    peer:close()
-  end
+  local current=socket.gettime()
+  tcp_loop.step(loop,math.min(math.max(current-last,0),1))
+  last=current
+  socket.sleep(0.01)
 end

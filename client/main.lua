@@ -13,6 +13,7 @@ local assets = require('lib.legacy_assets')
 local symbols = require('lib.legacy_symbols')
 local jcl_screen = require('lib.jcl_screen')
 local social_poll = require('lib.social_poll')
+local social_send = require('lib.social_send')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -29,6 +30,7 @@ local history = jcl_history.new(16)
 local previousView = 'menu'
 local guestSession = nil -- ephemeral; never persisted
 local pollJob, pollPending, pollElapsed, pollHint = nil,nil,0,''
+local sendJob, sendHint = nil,''
 local originalLogo = nil
 local imageCache = {}
 local function paint(color) love.graphics.setColor(color) end
@@ -51,6 +53,9 @@ local function cancelPoll()
   if pollJob then social_poll.cancel(pollJob);pollJob=nil end
   pollPending=nil;pollElapsed=0;pollHint=''
 end
+local function cancelSend()
+  if sendJob then social_send.cancel(sendJob);sendJob=nil end
+end
 local function activeChatPeer()
   if view~='jcl' or not document or not guestSession then return nil end
   local props=document.document.props or {}
@@ -59,6 +64,7 @@ local function activeChatPeer()
   return nil
 end
 local function returnMenu()
+  cancelSend()
   cancelPoll()
   view='menu';scroll=0;computed=nil;document=nil
   jcl_history.clear(history)
@@ -94,6 +100,8 @@ local function openJCL(source, preservePrevious, socialResponse)
     guestSession=result.props.guestSession
   end
   cancelPoll()
+  cancelSend()
+  sendHint=''
   document=jcl_view.new(result)
   view='jcl';scroll=0
   love.keyboard.setTextInput(false)
@@ -101,6 +109,7 @@ local function openJCL(source, preservePrevious, socialResponse)
   return true
 end
 local function goBack()
+  cancelSend()
   cancelPoll()
   local prior,priorScroll=jcl_history.pop(history)
   if prior then
@@ -180,6 +189,19 @@ local function navigate(href, activated)
       if not ok then return showError(fields) end
       props=fields;props.lang='pt-BR'
     end
+    local peer=href:match('^/revival/social/send/([1-9]%d*)$')
+    if peer then
+      if sendJob then return end
+      if not lab_host.valid(serverHost) then return showError('Endereço local inválido') end
+      local available,socklib=pcall(require,'socket')
+      if not available then return showError('LuaSocket indisponível no cliente') end
+      local task,err=social_send.start(socklib,protocol,serverHost,5190,guestSession,peer,props)
+      if task then
+        sendHint=''
+        sendJob=task;sendHint='Enviando mensagem...';cancelPoll()
+      else sendHint='Não enviado: '..tostring(err) end
+      return
+    end
     local source,err=socketRequest(href,submitting and 'P' or 'O',props)
     if source then openJCL(source,true,true) else showError('Falha social: '..tostring(err)) end
   elseif href=='/revival/submit/echo' then
@@ -230,6 +252,21 @@ local function applyPolledChat(source, peer)
   pollHint='Conversa atualizada automaticamente'
 end
 function love.update(dt)
+  if sendJob then
+    local result=social_send.step(sendJob,dt)
+    if result then
+      sendJob=nil
+      if result.ok then
+        -- Only a confirmed reply advances the chat page. The Back stack retains
+        -- the original draft; a failed/ambiguous send never clears it.
+        if openJCL(result.payload,true,true) then sendHint='' end
+      else
+        sendHint=(result.rejected and 'Rejeitado: ' or 'Envio não confirmado: ')..tostring(result.error)
+        pollElapsed=0
+      end
+    end
+    return
+  end
   local peer=activeChatPeer()
   if not peer then
     if pollJob or pollPending then cancelPoll() end
@@ -375,10 +412,11 @@ local function drawJCL()
     end
   end
   love.graphics.setScissor()
-  local hint = pollPending and 'Nova mensagem: concluir edicao' or
+  local hint = sendHint~='' and sendHint or
+    (pollPending and 'Nova mensagem: concluir edicao' or
     (pollHint~='' and pollHint or nil) or
     (document.editing and 'Enter: concluir edicao' or
-    (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir'))
+    (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir')))
   text(hint,7,283,204,'center')
   local strip=assets.load('kui/symbols.png',love.graphics,imageCache)
   if strip then
@@ -445,6 +483,7 @@ function love.draw()
   love.graphics.pop()
 end
 function love.keypressed(key)
+  if sendJob then return end -- prevent double submit or navigation during in-flight send
   -- Optional J2ME-like numeric keyboard controls; no 1:1 keypad mapping claimed.
   if view=='jcl' or view=='menu' then
     local numeric={['2']='up',['8']='down',['5']='return',['4']='left',
@@ -497,6 +536,7 @@ function love.keypressed(key)
   elseif key=='escape' or key=='return' or key=='kpenter' then returnMenu() end
 end
 function love.textinput(t)
+  if sendJob then return end
   if view=='host' and #serverHost+#t<128 and t:match('^[%w%.:%-]+$') then
     serverHost=serverHost..t
   elseif view=='jcl' and document and document.editing then
@@ -504,6 +544,7 @@ function love.textinput(t)
   end
 end
 local function pointer(x,y)
+  if sendJob then return end
   local px,py=localPoint(x,y)
   if px<0 or px>W or py<0 or py>H then return end
   if view=='menu' then
@@ -540,6 +581,7 @@ function love.touchpressed(id,x,y)
   touches[id]={x=x,y=y,last=y,moved=false}
 end
 function love.touchmoved(id,x,y)
+  if sendJob then return end
   local t=touches[id]
   if not t then return end
   local scale=transform()
@@ -555,6 +597,7 @@ function love.touchreleased(id,x,y)
   if t and not t.moved then pointer(x,y) end
 end
 function love.wheelmoved(_,dy)
+  if sendJob then return end
   if view=='jcl' and computed then
     scroll=layout.clamp_scroll(computed,scroll-dy*32,VH)
   end
