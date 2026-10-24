@@ -28,6 +28,8 @@ jobs:
           lua5.4 tests/test_client_history.lua
           lua5.4 tests/test_social_routes.lua
           lua5.4 tests/test_client_social.lua
+          lua5.4 tests/test_social_poll.lua
+          lua5.4 tests/test_client_poll.lua
           lua5.4 tests/test_original_logo.lua
           python3 tests/test_import_jar_assets.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p

@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 9 — laboratório social local (protótipo)
+## Estado atual: fase 10 — atualização automática do chat local (protótipo)
 
 - Cliente LÖVE inicial com controles por teclado, mouse e toque, renderização lógica em **240 × 320**, paleta extraída de `registry.ini` e tela **explicitamente provisória**.
 - Servidor Lua de diagnóstico na porta **5190**, apenas para teste em rede local.
@@ -16,6 +16,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 - **Fase 6:** seleção JCL (`select`) distingue os tipos 1 (única), 2 (múltipla), 3 (única) e 4 (compacta). Os padrões por quantidade de opções e a concatenação de valores múltiplos por vírgulas foram verificados nas classes `h` e `s` do JAR. O layout e os controles são uma aproximação própria, não uma captura pixel a pixel do Qeep. Veja `docs/selecoes-fase6.md`.
 - **Fase 8:** formulários curtos são centralizados verticalmente por padrão e `valign="top"` os alinha ao topo, como indicado por `j.class` e `h.class`. Comandos `lsk/rsk` preservam `cancel` e o modelo de tecla direita sem comando explícito ativa o foco. O menu contém **Composicao JCL (laboratorio)**, quatro telas sintéticas de comparação. Consulte `docs/composicao-fase8.md`.
 - **Fase 9:** laboratório social **novo e temporário**, com apelidos de visitantes, lista de pessoas conectadas e mensagens entre clientes na mesma rede local usando JCL. Não há login real, contatos, histórico permanente ou telas históricas recuperadas. Veja `docs/social-fase9.md`.
+- **Fase 10:** conversas de laboratório verificam novas mensagens a cada 3 segundos com LuaSocket não bloqueante. Revisões evitam redesenhar a página sem mudanças. Rascunho, seleção e histórico Voltar são preservados; a atualização visual espera o fim da edição. Consulte `docs/atualizacao-social-fase10.md`.
 - Ainda não existem contas autenticadas, contatos persistentes, jogos ou telas históricas reconstruídas. As demonstrações **não devem ser confundidas com as telas originais do Qeep**.
 
 ## Executar
@@ -51,12 +52,13 @@ client/lib/jcl_history.lua Histórico de formulários/documentos com rolagem/foc
 client/lib/jcl_screen.lua Comandos Java ME e estado visual de softkeys
 client/lib/jcl_submit.lua Coleta segura de valores do formulário do laboratório
 client/lib/lab_host.lua  Validação de host local/rede privada
+client/lib/social_poll.lua Transporte não bloqueante do chat local
 client/lib/legacy_palette.lua Cores verificadas em registry.ini
 client/fixtures/         Telas sintéticas exclusivamente de teste
 server/                   Servidor Lua de laboratório, incluindo visitantes temporários
 tests/                    Testes do codec
 tools/import_jar_assets.py Importação local verificada dos três PNGs históricos
-docs/                     Documentação e evidências (fases 1–9)
+docs/                     Documentação e evidências (fases 1–10)
 ```
 
 ## Próximos marcos
@@ -78,3 +80,7 @@ O cliente pode desenhar recortes reais do atlas `kui/symbols.png` (12×180, cél
 ### Fase 9 — protótipo social local
 
 O menu **Social local (prototipo)** inicia um fluxo de páginas JCL geradas pelo servidor Lua, com entrada de visitantes, pessoas online e mensagens temporárias entre instâncias do cliente. Este recurso **não é uma reprodução histórica** nem possui sistema de contas. [Detalhes e limites de segurança](docs/social-fase9.md).
+
+### Fase 10 — atualização social não bloqueante
+
+O chat local recebe novas mensagens automaticamente enquanto estiver aberto (consulta a cada 3 segundos). O servidor só transmite uma nova página quando houver mudanças, e o rascunho digitado é preservado. [Documentação e testes](docs/atualizacao-social-fase10.md). Ainda não é a reconstrução histórica nem está pronto para uso público.
