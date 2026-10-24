@@ -153,7 +153,31 @@ function M.handle(req)
     end
     return {ok=true,payload=chat_page(person,other)}
   end
-  peerid=p:match('^/revival/social/poll/([1-9]%d*)
+  peerid=p:match('^/revival/social/poll/([1-9]%d*)$')
+  if peerid and req.kind=='O' then
+    local other=people[tonumber(peerid)]
+    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
+      return reply_error('Destinatário indisponível')
+    end
+    local props=req.properties or {}
+    for k in pairs(props) do
+      if k~='session' and k~='since' then return reply_error('Campo não permitido') end
+    end
+    local since=props.since
+    if type(since)~='string' or #since>12 or not since:match('^%d+$') then
+      return reply_error('Revisão inválida')
+    end
+    local revision=0
+    for _,message in ipairs(messages) do
+      if (message.from==person.id and message.to==other.id) or
+        (message.from==other.id and message.to==person.id) then
+        revision=message.sequence
+      end
+    end
+    if tonumber(since)==revision then return {ok=true,unchanged=true,payload=''} end
+    return {ok=true,payload=chat_page(person,other)}
+  end
+  peerid=p:match('^/revival/social/send/([1-9]%d*)$')
   if peerid and req.kind=='P' then
     local other=people[tonumber(peerid)]
     if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
@@ -171,99 +195,6 @@ function M.handle(req)
     end
     messageSequence=messageSequence+1
     messages[#messages+1]={from=person.id,to=other.id,text=msg,sequence=messageSequence}
-    if #messages>MAX_MESSAGES then table.remove(messages,1) end
-    return {ok=true,payload=chat_page(person,other)}
-  end
-  return reply_error('Rota social desconhecida')
-end
-return M
-)
-  if peerid and req.kind=='O' then
-    local other=people[tonumber(peerid)]
-    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
-      return reply_error('Destinatário indisponível')
-    end
-    local props=req.properties or {}
-    for k in pairs(props) do
-      if k~='session' and k~='since' then return reply_error('Campo não permitido') end
-    end
-    local since=props.since
-    if type(since)~='string' or #since>12 or not since:match('^%d+
-  if peerid and req.kind=='P' then
-    local other=people[tonumber(peerid)]
-    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
-      return reply_error('Destinatário indisponível')
-    end
-    local props=req.properties or {}
-    for k in pairs(props) do
-      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
-        return reply_error('Campo não permitido')
-      end
-    end
-    local msg=type(props.message)=='string' and trim(props.message) or ''
-    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
-      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
-    end
-    messages[#messages+1]={from=person.id,to=other.id,text=msg}
-    if #messages>MAX_MESSAGES then table.remove(messages,1) end
-    return {ok=true,payload=chat_page(person,other)}
-  end
-  return reply_error('Rota social desconhecida')
-end
-return M
-) then
-      return reply_error('Revisão inválida')
-    end
-    local revision=0
-    for _,message in ipairs(messages) do
-      if (message.from==person.id and message.to==other.id) or
-        (message.from==other.id and message.to==person.id) then
-        revision=message.sequence
-      end
-    end
-    if tonumber(since)==revision then return {ok=true,unchanged=true,payload=''} end
-    return {ok=true,payload=chat_page(person,other)}
-  end
-  peerid=p:match('^/revival/social/send/([1-9]%d*)
-  if peerid and req.kind=='P' then
-    local other=people[tonumber(peerid)]
-    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
-      return reply_error('Destinatário indisponível')
-    end
-    local props=req.properties or {}
-    for k in pairs(props) do
-      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
-        return reply_error('Campo não permitido')
-      end
-    end
-    local msg=type(props.message)=='string' and trim(props.message) or ''
-    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
-      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
-    end
-    messages[#messages+1]={from=person.id,to=other.id,text=msg}
-    if #messages>MAX_MESSAGES then table.remove(messages,1) end
-    return {ok=true,payload=chat_page(person,other)}
-  end
-  return reply_error('Rota social desconhecida')
-end
-return M
-)
-  if peerid and req.kind=='P' then
-    local other=people[tonumber(peerid)]
-    if not other or other==person or os.time()-other.lastSeen>MAX_IDLE then
-      return reply_error('Destinatário indisponível')
-    end
-    local props=req.properties or {}
-    for k in pairs(props) do
-      if k~='message' and k~='submitId' and k~='lang' and k~='session' then
-        return reply_error('Campo não permitido')
-      end
-    end
-    local msg=type(props.message)=='string' and trim(props.message) or ''
-    if props.submitId~='send' or #msg==0 or not text_ok(msg,960,240) then
-      return reply_error('Mensagem inválida (máximo de 240 caracteres)')
-    end
-    messages[#messages+1]={from=person.id,to=other.id,text=msg}
     if #messages>MAX_MESSAGES then table.remove(messages,1) end
     return {ok=true,payload=chat_page(person,other)}
   end
