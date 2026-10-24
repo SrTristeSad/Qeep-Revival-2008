@@ -2,6 +2,7 @@
 -- historical pixel-perfect reproduction of the obfuscated Java ME renderer.
 local M = {}
 local choices = require('lib.jcl_choices')
+local assets = require('lib.legacy_assets')
 local function wrap(font, value, width)
   local _, lines = font:getWrap(tostring(value or ''), width)
   return math.max(1, #lines)
@@ -20,7 +21,7 @@ function M.build(form, font, width)
       local kind = item.kind
       local title = tostring(item.label or '')
       if item.marker then title = item.marker .. (title ~= '' and (' '..title) or '') end
-      local detail
+      local detail, imageInfo, imageY
       if kind == 'input' or kind == 'textarea' then
         detail = tostring(item.value or '')
       elseif kind == 'select' then
@@ -29,7 +30,8 @@ function M.build(form, font, width)
           detail = (option and option.label or '[sem opções]') .. '  >'
         end
       elseif kind == 'img' then
-        detail = '[recurso de imagem não carregado]'
+        imageInfo = assets.info(item.src)
+        if not imageInfo then detail='[recurso de imagem desconhecido]' end
       elseif kind == 'gauge' then
         detail = tostring(item.value or 0) .. '/' .. tostring(item.max or 100)
       end
@@ -53,11 +55,14 @@ function M.build(form, font, width)
         elseif kind == 'textarea' then height = math.max(height, 58)
         elseif kind == 'select' and item.choiceType == 4 then height = math.max(height, 43)
         elseif kind == 'gauge' then height = height + 10
-        elseif kind == 'img' then height = math.max(height, 44) end
+        elseif kind == 'img' then
+          imageY=title~='' and (8 + wrap(font,title,width-16)*line_height) or 5
+          height=math.max(height, imageY + (imageInfo and imageInfo.height or 24) + 5)
+        end
       end
       local entry = {index=index, item=item, title=title, detail=detail, y=y, height=height, lineHeight=line_height,
         ruleWidth = kind == 'hr' and bound(item.width or 90, 1, width - 10) or nil,
-        choiceRows = choiceRows}
+        choiceRows = choiceRows, imageInfo=imageInfo, imageY=imageY}
       result.entries[#result.entries + 1] = entry
       y = y + height + 3
     end

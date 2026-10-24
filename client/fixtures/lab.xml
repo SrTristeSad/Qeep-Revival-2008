@@ -31,6 +31,9 @@
     <p label="Amostra do estilo s11" style="11"/>
     <li>Marcador de lista do interpretador original</li>
     <a href="#about"/>
+    <p label="Imagens locais verificadas do JAR:"/>
+    <img src="logo.png"/>
+    <img src="icon_15x15.png"/>
     <hr w="90"/>
     <hr w="160"/>
     <button label="Voltar ao índice" href="#index"/>

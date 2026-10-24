@@ -9,6 +9,8 @@ local jcl_style = require('lib.jcl_style')
 local jcl_submit = require('lib.jcl_submit')
 local lab_host = require('lib.lab_host')
 local jcl_history = require('lib.jcl_history')
+local assets = require('lib.legacy_assets')
+local symbols = require('lib.legacy_symbols')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -23,6 +25,7 @@ local touches = {}
 local history = jcl_history.new(16)
 local previousView = 'menu'
 local originalLogo = nil
+local imageCache = {}
 local function paint(color) love.graphics.setColor(color) end
 local function rect(mode,x,y,w,h) love.graphics.rectangle(mode,x,y,w,h) end
 local function text(s,x,y,width,align,useBig,color)
@@ -178,10 +181,7 @@ end
 function love.load()
   love.graphics.setDefaultFilter('nearest','nearest')
   font,big=love.graphics.newFont(12),love.graphics.newFont(17)
-  if love.graphics.newImage then
-    local ok,image=pcall(love.graphics.newImage,'assets/original/logo.png')
-    if ok then originalLogo=image end
-  end
+  originalLogo=assets.load('logo.png',love.graphics,imageCache)
   local saved=love.filesystem.read('host.txt')
   if saved and #saved<128 then
     local clean=saved:gsub('%s+','')
@@ -208,6 +208,15 @@ local function drawJCL()
         if style.surface then paint(style.surface);rect('fill',10,y,220,height) end
         if style.border then paint(style.border);rect('line',10,y,220,height) end
         text(entry.title,17,y+5,204,'left',false,style.text)
+        if item.kind=='img' and entry.imageInfo then
+          local image=assets.load(item.src,love.graphics,imageCache)
+          if image and love.graphics.draw then
+            paint(c.white)
+            love.graphics.draw(image,math.floor((W-image:getWidth())/2),y+(entry.imageY or 5))
+          else
+            text('[imagem original não importada]',17,y+(entry.imageY or 5),204)
+          end
+        end
         if entry.choiceRows then
           for _,choice in ipairs(entry.choiceRows) do
             local optionY = y + choice.y
@@ -250,7 +259,16 @@ local function drawJCL()
   love.graphics.setScissor()
   local hint = document.editing and 'Enter: concluir edicao' or
     (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir')
-  text(hint,7,283,226,'center')
+  text(hint,7,283,204,'center')
+  local strip=assets.load('kui/symbols.png',love.graphics,imageCache)
+  if strip then
+    local canUp=scroll>0
+    local canDown=scroll<layout.max_scroll(computed,VH)
+    local first,second=symbols.scroll_frames(canUp,canDown)
+    paint(c.white)
+    symbols.draw(love.graphics,strip,first,220,284,1,30)
+    symbols.draw(love.graphics,strip,second,220,290,1,30)
+  end
   paint(c.purple);rect('fill',0,H-25,W,25)
   local left,right='Voltar','Abrir'
   for _,item in ipairs(form.items) do

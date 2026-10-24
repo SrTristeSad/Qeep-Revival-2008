@@ -62,3 +62,8 @@ docs/                     Documentação e evidências (fases 1–6)
 2. Substituir as telas sintéticas por telas reproduzidas a partir de referências verificáveis.
 3. Evoluir do laboratório de formulários sintéticos (Fase 4) para fluxos comprovados no JAR; construir serviços reais somente após mapear o funcionamento de cada recurso.
 4. Empacotar e testar versões Windows e Android, preservando a mesma base Lua.
+
+
+### Fase 7 — atlas e imagens locais
+
+O cliente pode desenhar recortes reais do atlas `kui/symbols.png` (12×180, células 12×6 usadas em `j.class`) e imagens locais por `<img src>` para os três PNGs conhecidos do JAR. Os originais continuam ignorados pelo Git; importe-os com `python3 tools/import_jar_assets.py <caminho-do-JAR>`. As posições atuais são experimentais: consulte [`docs/simbolos-e-imagens-fase7.md`](docs/simbolos-e-imagens-fase7.md).
