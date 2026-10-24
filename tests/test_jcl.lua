@@ -1,4 +1,4 @@
-package.path = 'client/lib/?.lua;' .. package.path
+package.path = 'client/?.lua;client/lib/?.lua;' .. package.path
 local jcl = require('jcl')
 local view = require('jcl_view')
 local file = assert(io.open('client/fixtures/lab.xml', 'rb'))
