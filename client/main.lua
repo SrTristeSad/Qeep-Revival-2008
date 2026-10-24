@@ -6,6 +6,8 @@ local jcl_view = require('lib.jcl_view')
 local layout = require('lib.jcl_layout')
 local legacy = require('lib.legacy_palette')
 local jcl_style = require('lib.jcl_style')
+local jcl_submit = require('lib.jcl_submit')
+local lab_host = require('lib.lab_host')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -55,7 +57,8 @@ local function openJCL(source)
   love.keyboard.setTextInput(false)
   refreshLayout(true)
 end
-local function socketRequest(path)
+local function socketRequest(path, kind, properties)
+  if not lab_host.valid(serverHost) then return nil,'Use somente IP de rede privada ou localhost.' end
   local ok,socklib=pcall(require,'socket')
   if not ok then return nil,'LuaSocket indisponivel nesta compilacao.' end
   local conn,reason=socklib.tcp()
@@ -63,12 +66,14 @@ local function socketRequest(path)
   conn:settimeout(1.5)
   local connected,connectErr=conn:connect(serverHost,5190)
   if not connected then conn:close();return nil,connectErr end
-  local sent,sendErr=conn:send(protocol.encodeRequest('O',path,{lang='pt-BR'},''))
-  if not sent then conn:close();return nil,sendErr end
+  local request=protocol.encodeRequest(kind or 'O',path,properties or {lang='pt-BR'},'')
+  local sent,sendErr,last=conn:send(request)
+  if not sent and (not last or last<#request) then conn:close();return nil,sendErr end
   local reply,readErr,partial=conn:receive('*a')
   conn:close()
   local valid,result=pcall(protocol.decodeReply,reply or partial or '')
   if not valid then return nil,tostring(result)..' ('..tostring(readErr)..')' end
+  if result.kind~='R' or result.path~=path then return nil,'Resposta inesperada do laboratorio.' end
   if result.properties.ok~='true' then return nil,result.payload end
   return result.payload
 end
@@ -87,37 +92,58 @@ local function activateMenu()
   elseif selected==5 then view='about'
   elseif selected==6 then love.event.quit() end
 end
-local function navigate(href)
+local function navigate(href, activated)
   if type(href)~='string' or href=='' then return end
   if href:sub(1,1)=='#' then
     if not jcl_view.next_form(document,href:sub(2)) then return showError('Formulario JCL ausente: '..href) end
     scroll=0;refreshLayout(true)
+  elseif href=='/revival/page/lab' or href=='/revival/page/submit' then
+    local source,err=socketRequest(href)
+    if source then openJCL(source) else showError('Falha no servidor: '..tostring(err)) end
+  elseif href=='/revival/submit/echo' then
+    local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
+    if not ok then return showError(fields) end
+    fields.lang='pt-BR'
+    local source,err=socketRequest(href,'P',fields)
+    if source then openJCL(source) else showError('Falha ao enviar: '..tostring(err)) end
   else
-    -- Do not follow URL endpoints, old servers, or arbitrary JCL destinations.
-    showError('Endereco nao implementado no laboratorio:\n'..href)
+    -- Restricted to explicit local laboratory routes; never contact legacy endpoints.
+    showError('Endereco nao permitido no laboratorio:\n'..href)
   end
 end
 local function softkey(kind)
   local form=jcl_view.form(document)
   for _,item in ipairs(form.items) do
     if item.kind==kind then
-      if item.href and item.href~='' then navigate(item.href) end
+      if item.href and item.href~='' then
+        local button=nil
+        if item.href=='/revival/submit/echo' then
+          for _,candidate in ipairs(form.items) do
+            if candidate.kind=='button' and candidate.href==item.href then button=candidate;break end
+          end
+        end
+        navigate(item.href,button)
+      end
       return
     end
   end
   if kind=='lsk' then returnMenu() end
 end
 local function activateJCL()
+  local active=jcl_view.item(document)
   local result=jcl_view.activate(document)
   if result=='editing' then love.keyboard.setTextInput(true)
   elseif result=='selected' then refreshLayout(true)
-  elseif result then navigate(result) end
+  elseif result then navigate(result,active) end
 end
 function love.load()
   love.graphics.setDefaultFilter('nearest','nearest')
   font,big=love.graphics.newFont(12),love.graphics.newFont(17)
   local saved=love.filesystem.read('host.txt')
-  if saved and #saved<128 then serverHost=saved:gsub('%s+','') end
+  if saved and #saved<128 then
+    local clean=saved:gsub('%s+','')
+    if lab_host.valid(clean) then serverHost=clean end
+  end
 end
 local function drawJCL()
   local form=jcl_view.form(document)
@@ -239,8 +265,12 @@ function love.keypressed(key)
   elseif view=='host' then
     if key=='return' or key=='kpenter' then
       serverHost=serverHost:gsub('%s+','')
-      if #serverHost>0 then love.filesystem.write('host.txt',serverHost) end
-      returnMenu()
+      if lab_host.valid(serverHost) then
+        love.filesystem.write('host.txt',serverHost)
+        returnMenu()
+      else
+        return showError('Endereco invalido. Use localhost ou IPv4 privado (192.168.x.x, 10.x.x.x, 172.16-31.x.x).')
+      end
     elseif key=='backspace' then serverHost=serverHost:sub(1,-2)
     elseif key=='escape' then returnMenu() end
   elseif key=='escape' or key=='return' or key=='kpenter' then returnMenu() end

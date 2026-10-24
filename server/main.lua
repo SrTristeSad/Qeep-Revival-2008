@@ -1,6 +1,8 @@
 -- Isolated, disposable diagnostic server. Not the historical Qeep backend.
 package.path = 'client/lib/?.lua;' .. package.path
 local protocol = require('protocol')
+package.path = 'server/lib/?.lua;' .. package.path
+local routes = require('lab_routes')
 local ok, socket = pcall(require, 'socket')
 if not ok then
   io.stderr:write('LuaSocket missing. Install: luarocks install luasocket\n')
@@ -29,14 +31,21 @@ while true do
         if bytes then
           local success, req = pcall(protocol.decodeRequest, prefix .. bytes)
           if success then
-            local ping = req.path == '/revival/ping'
-            local page = req.path == '/revival/page/lab'
-            local known = ping or page
+            local routed, answer = pcall(routes.handle, req, labxml)
+            if not routed then answer={ok=false,payload='Server route error'} end
             local reply = protocol.encodeReply('R', req.path,
-              {ok = known and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-1'},
-              ping and 'PONG' or (page and labxml or 'UNKNOWN TEST PATH'))
-            peer:send(reply)
-            print(req.kind, req.path, known and 'OK' or 'UNKNOWN')
+              {ok = answer.ok and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-4'},
+              answer.payload)
+            -- send() may write only part of the frame; retry until complete.
+            local offset=1
+            while offset<=#reply do
+              local sent, write_error, last = peer:send(reply, offset)
+              if not sent then
+                if last and last>=offset then offset=last+1
+                else io.stderr:write('Reply write: '..tostring(write_error)..'\n');break end
+              else offset=sent+1 end
+            end
+            print(req.kind, req.path, answer.ok and 'OK' or 'REJECTED')
           else
             io.stderr:write('Invalid synthetic packet: ' .. tostring(req) .. '\n')
           end
