@@ -3,6 +3,7 @@ package.path = 'client/lib/?.lua;' .. package.path
 local protocol = require('protocol')
 package.path = 'server/lib/?.lua;' .. package.path
 local routes = require('lab_routes')
+local social = require('social_routes')
 local ok, socket = pcall(require, 'socket')
 if not ok then
   io.stderr:write('LuaSocket missing. Install: luarocks install luasocket\n')
@@ -18,7 +19,8 @@ local listener, e = socket.bind(host, port)
 assert(listener, e)
 listener:settimeout(1)
 print(('Qeep Revival 2008 diagnostic server on %s:%d'):format(host, port))
-print('No accounts, passwords or legacy domains are used.')
+print('Local laboratory: temporary visitor nicknames; no passwords or saved history.')
+if host ~= '127.0.0.1' and host ~= 'localhost' then print('WARNING: guest prototype is NOT secure for public exposure.') end
 while true do
   local peer = listener:accept()
   if peer then
@@ -31,10 +33,13 @@ while true do
         if bytes then
           local success, req = pcall(protocol.decodeRequest, prefix .. bytes)
           if success then
-            local routed, answer = pcall(routes.handle, req, labxml)
+            local isSocial = req.path:sub(1,16)=='/revival/social/'
+            local routed, answer
+            if isSocial then routed, answer = pcall(social.handle, req)
+            else routed, answer = pcall(routes.handle, req, labxml) end
             if not routed then answer={ok=false,payload='Server route error'} end
             local reply = protocol.encodeReply('R', req.path,
-              {ok = answer.ok and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-4'},
+              {ok = answer.ok and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-9'},
               answer.payload)
             -- send() may write only part of the frame; retry until complete.
             local offset=1

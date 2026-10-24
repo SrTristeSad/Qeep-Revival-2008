@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 8 — composição de telas JCL (protótipo)
+## Estado atual: fase 9 — laboratório social local (protótipo)
 
 - Cliente LÖVE inicial com controles por teclado, mouse e toque, renderização lógica em **240 × 320**, paleta extraída de `registry.ini` e tela **explicitamente provisória**.
 - Servidor Lua de diagnóstico na porta **5190**, apenas para teste em rede local.
@@ -15,13 +15,14 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 - **Fase 5:** histórico limitado de navegação preserva formulário, foco e rolagem para voltar com Esc/Backspace/0; erros de comunicação não descartam o documento atual. A tecla numérica 2/8/5/4/6 facilita testes com controle de telefone antigo. Um importador valida os três PNGs do JAR por hash e permite usar o logotipo original localmente, sem publicá-lo no GitHub.
 - **Fase 6:** seleção JCL (`select`) distingue os tipos 1 (única), 2 (múltipla), 3 (única) e 4 (compacta). Os padrões por quantidade de opções e a concatenação de valores múltiplos por vírgulas foram verificados nas classes `h` e `s` do JAR. O layout e os controles são uma aproximação própria, não uma captura pixel a pixel do Qeep. Veja `docs/selecoes-fase6.md`.
 - **Fase 8:** formulários curtos são centralizados verticalmente por padrão e `valign="top"` os alinha ao topo, como indicado por `j.class` e `h.class`. Comandos `lsk/rsk` preservam `cancel` e o modelo de tecla direita sem comando explícito ativa o foco. O menu contém **Composicao JCL (laboratorio)**, quatro telas sintéticas de comparação. Consulte `docs/composicao-fase8.md`.
-- Não existem ainda login, contas, chat, contatos, jogos ou telas históricas reconstruídos. A interface de demonstração **não deve ser confundida com uma tela original do Qeep**.
+- **Fase 9:** laboratório social **novo e temporário**, com apelidos de visitantes, lista de pessoas conectadas e mensagens entre clientes na mesma rede local usando JCL. Não há login real, contatos, histórico permanente ou telas históricas recuperadas. Veja `docs/social-fase9.md`.
+- Ainda não existem contas autenticadas, contatos persistentes, jogos ou telas históricas reconstruídas. As demonstrações **não devem ser confundidas com as telas originais do Qeep**.
 
 ## Executar
 
 **Cliente Windows / desktop:** instale [LÖVE 11.x](https://love2d.org/), abra a pasta `client` com LÖVE ou, no terminal, use `love client` a partir da raiz do repositório.
 
-**Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde a `/revival/ping`, `/revival/page/lab`, `/revival/page/submit` e `/revival/submit/echo` e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O teste de rede não implementa autenticação.
+**Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde ao laboratório de protocolo e às rotas sintéticas `/revival/social/...` (descritas em `docs/social-fase9.md`) e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O laboratório social não possui autenticação segura, TLS ou armazenamento permanente. Não exponha na internet.
 
 **Recursos gráficos originais opcionais:** com o JAR de referência em mãos, execute `python tools/import_jar_assets.py qeep-94724.jar` na raiz. Ele valida os hashes antes de extrair os três PNGs para `client/assets/original/` (ignorados no Git). O logotipo passa a aparecer na tela inicial de laboratório. Para mais informações, veja `docs/navegacao-e-assets-fase5.md`.
 
@@ -52,10 +53,10 @@ client/lib/jcl_submit.lua Coleta segura de valores do formulário do laboratóri
 client/lib/lab_host.lua  Validação de host local/rede privada
 client/lib/legacy_palette.lua Cores verificadas em registry.ini
 client/fixtures/         Telas sintéticas exclusivamente de teste
-server/                   Servidor Lua de diagnóstico
+server/                   Servidor Lua de laboratório, incluindo visitantes temporários
 tests/                    Testes do codec
 tools/import_jar_assets.py Importação local verificada dos três PNGs históricos
-docs/                     Documentação e evidências (fases 1–8)
+docs/                     Documentação e evidências (fases 1–9)
 ```
 
 ## Próximos marcos
@@ -73,3 +74,7 @@ O cliente pode desenhar recortes reais do atlas `kui/symbols.png` (12×180, cél
 ### Fase 8 — composição de telas
 
 `client/fixtures/composition.xml` contém quatro telas sintéticas para testar centralização vertical, `valign="top"`, listas longas e comandos com `cancel`. Abra **Composicao JCL (laboratorio)** no menu inicial. Veja [`docs/composicao-fase8.md`](docs/composicao-fase8.md).
+
+### Fase 9 — protótipo social local
+
+O menu **Social local (prototipo)** inicia um fluxo de páginas JCL geradas pelo servidor Lua, com entrada de visitantes, pessoas online e mensagens temporárias entre instâncias do cliente. Este recurso **não é uma reprodução histórica** nem possui sistema de contas. [Detalhes e limites de segurança](docs/social-fase9.md).

@@ -26,6 +26,8 @@ jobs:
           lua5.4 tests/test_lab_client.lua
           lua5.4 tests/test_jcl_history.lua
           lua5.4 tests/test_client_history.lua
+          lua5.4 tests/test_social_routes.lua
+          lua5.4 tests/test_client_social.lua
           lua5.4 tests/test_original_logo.lua
           python3 tests/test_import_jar_assets.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
@@ -36,3 +38,4 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           sleep 1
           lua5.4 tests/test_socket_roundtrip.lua
+          lua5.4 tests/test_socket_social.lua

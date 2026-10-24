@@ -19,12 +19,14 @@ local VH = BOTTOM-TOP
 local view, selected, serverHost, status = 'menu',1,'127.0.0.1',''
 local options = {
   'Abrir JCL (offline)', 'Receber JCL do servidor', 'Testar servidor local',
-  'Configurar endereco IP', 'Composicao JCL (laboratorio)', 'Sobre o projeto', 'Sair'
+  'Configurar endereco IP', 'Composicao JCL (laboratorio)', 'Sobre o projeto',
+  'Social local (prototipo)', 'Sair'
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touches = {}
 local history = jcl_history.new(16)
 local previousView = 'menu'
+local guestSession = nil -- ephemeral; never persisted
 local originalLogo = nil
 local imageCache = {}
 local function paint(color) love.graphics.setColor(color) end
@@ -66,13 +68,16 @@ local function refreshLayout(ensure)
   elseif ensure then scroll=layout.ensure_visible(computed,document.selected,scroll,VH)
   else scroll=layout.clamp_scroll(computed,scroll,VH) end
 end
-local function openJCL(source, preservePrevious)
+local function openJCL(source, preservePrevious, socialResponse)
   local ok,result=pcall(jcl.parse,source)
   if not ok then showError(result);return false end
   if preservePrevious and view=='jcl' and document then
     jcl_history.push(history,document,scroll)
   else
     jcl_history.clear(history)
+  end
+  if socialResponse and result.props and result.props.guestSession then
+    guestSession=result.props.guestSession
   end
   document=jcl_view.new(result)
   view='jcl';scroll=0
@@ -98,7 +103,11 @@ local function socketRequest(path, kind, properties)
   conn:settimeout(1.5)
   local connected,connectErr=conn:connect(serverHost,5190)
   if not connected then conn:close();return nil,connectErr end
-  local request=protocol.encodeRequest(kind or 'O',path,properties or {lang='pt-BR'},'')
+  local props={}
+  for k,v in pairs(properties or {lang='pt-BR'}) do props[k]=v end
+  if path:sub(1,16)=='/revival/social/' and path~='/revival/social/start'
+    and path~='/revival/social/join' and guestSession then props.session=guestSession end
+  local request=protocol.encodeRequest(kind or 'O',path,props,'')
   local sent,sendErr,last=conn:send(request)
   if not sent and (not last or last<#request) then conn:close();return nil,sendErr end
   local reply,readErr,partial=conn:receive('*a')
@@ -125,7 +134,10 @@ local function activateMenu()
     local file=love.filesystem.read('fixtures/composition.xml')
     if file then openJCL(file) else showError('Fixture de composicao nao encontrada.') end
   elseif selected==6 then view='about'
-  elseif selected==7 then love.event.quit() end
+  elseif selected==7 then
+    local source,err=socketRequest('/revival/social/start')
+    if source then openJCL(source,false,true) else showError('Servidor social indisponivel: '..tostring(err)) end
+  elseif selected==8 then love.event.quit() end
 end
 local function navigate(href, activated)
   if type(href)~='string' or href=='' then return end
@@ -143,6 +155,16 @@ local function navigate(href, activated)
   elseif href=='/revival/page/lab' or href=='/revival/page/submit' then
     local source,err=socketRequest(href)
     if source then openJCL(source,true) else showError('Falha no servidor: '..tostring(err)) end
+  elseif href:match('^/revival/social/') then
+    local submitting=href=='/revival/social/join' or href:match('^/revival/social/send/[1-9]%d*$')
+    local props={}
+    if submitting then
+      local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
+      if not ok then return showError(fields) end
+      props=fields;props.lang='pt-BR'
+    end
+    local source,err=socketRequest(href,submitting and 'P' or 'O',props)
+    if source then openJCL(source,true,true) else showError('Falha social: '..tostring(err)) end
   elseif href=='/revival/submit/echo' then
     local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
     if not ok then return showError(fields) end
@@ -173,7 +195,7 @@ local function softkey(kind)
     -- An unproductive root Back command should still leave the laboratory.
     if cmd.cancel and cmd.href=='#'..tostring(form.id or '') then return goBack() end
     local button=nil
-    if cmd.href=='/revival/submit/echo' then
+    if cmd.href=='/revival/submit/echo' or cmd.href=='/revival/social/join' or cmd.href:match('^/revival/social/send/[1-9]%d*$') then
       for _,candidate in ipairs(form.items) do
         if candidate.kind=='button' and candidate.href==cmd.href then button=candidate;break end
       end
@@ -310,12 +332,12 @@ function love.draw()
     paint(c.olive);rect('fill',9,83,W-18,1)
     if view=='menu' then
       for i,option in ipairs(options) do
-        local y=91+(i-1)*28
+        local y=91+(i-1)*24
         if selected==i then
-          paint(c.highlight);rect('fill',11,y,W-22,25)
-          paint(c.purple);rect('line',11,y,W-22,25)
+          paint(c.highlight);rect('fill',11,y,W-22,23)
+          paint(c.purple);rect('line',11,y,W-22,23)
         end
-        text((selected==i and '> ' or '  ')..option,16,y+6,W-32)
+        text((selected==i and '> ' or '  ')..option,16,y+4,W-32)
       end
     elseif view=='host' then
       text('IP ou nome do servidor:',15,106,215)
@@ -401,8 +423,8 @@ local function pointer(x,y)
   if px<0 or px>W or py<0 or py>H then return end
   if view=='menu' then
     for i=1,#options do
-      local y=91+(i-1)*28
-      if py>=y and py<=y+25 then selected=i;activateMenu();break end
+      local y=91+(i-1)*24
+      if py>=y and py<=y+23 then selected=i;activateMenu();break end
     end
   elseif view=='jcl' and document then
     if py>=H-25 then
