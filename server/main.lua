@@ -9,6 +9,9 @@ end
 local host = (arg and arg[1]) or '127.0.0.1'
 local port = tonumber((arg and arg[2]) or '5190')
 assert(port and port >= 1 and port <= 65535, 'invalid port')
+local labfile = assert(io.open('client/fixtures/lab.xml', 'rb'), 'start server from repository root')
+local labxml = labfile:read('*a')
+labfile:close()
 local listener, e = socket.bind(host, port)
 assert(listener, e)
 listener:settimeout(1)
@@ -26,10 +29,12 @@ while true do
         if bytes then
           local success, req = pcall(protocol.decodeRequest, prefix .. bytes)
           if success then
-            local known = req.path == '/revival/ping'
+            local ping = req.path == '/revival/ping'
+            local page = req.path == '/revival/page/lab'
+            local known = ping or page
             local reply = protocol.encodeReply('R', req.path,
-              {ok = known and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-0'},
-              known and 'PONG' or 'UNKNOWN TEST PATH')
+              {ok = known and 'true' or 'false', server = 'Qeep-Revival-2008', version = 'phase-1'},
+              ping and 'PONG' or (page and labxml or 'UNKNOWN TEST PATH'))
             peer:send(reply)
             print(req.kind, req.path, known and 'OK' or 'UNKNOWN')
           else

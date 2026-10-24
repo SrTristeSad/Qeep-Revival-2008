@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jcl base="/revival/" branding="Qeep Revival 2008">
+  <form id="index" title="JCL - Laboratório">
+    <p label="Página sintética para testes."/>
+    <p label="Não recuperada do servidor Qeep."/>
+    <hr/>
+    <a id="more" label="Abrir outro formulário" href="#fields" focused="true"/>
+    <button label="Sobre o protocolo" href="#about"/>
+    <lsk label="Voltar" href="#index"/>
+    <rsk label="Abrir" href="#fields"/>
+  </form>
+  <form id="fields" title="Campos JCL">
+    <input id="nickname" label="Nome de teste" len="30" value=""/>
+    <textarea id="message" label="Mensagem" len="120">Olá!</textarea>
+    <select id="choice" label="Escolha um item">
+      <option label="Primeiro" value="1" selected="true"/>
+      <option label="Segundo" value="2"/>
+    </select>
+    <gauge label="Progresso ilustrativo" value="35" max="100"/>
+    <button label="Voltar ao índice" href="#index"/>
+    <rsk label="Voltar" href="#index"/>
+  </form>
+  <form id="about" title="Referência">
+    <p>Os tipos de componentes vêm do bytecode de h.class.</p>
+    <p>Os textos e o layout desta página são exemplos criados para testes.</p>
+    <a label="Retornar" href="#index"/>
+  </form>
+</jcl>

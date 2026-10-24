@@ -1,4 +1,4 @@
-name: Lua protocol tests
+name: Lua protocol and JCL tests
 on:
   push:
   pull_request:
@@ -10,4 +10,7 @@ jobs:
       - name: Install Lua
         run: sudo apt-get update && sudo apt-get install -y lua5.4
       - name: Check bytecode compatibility and protocol fixtures
-        run: lua5.4 tests/test_protocol.lua
+        run: |
+          lua5.4 tests/test_protocol.lua
+          lua5.4 tests/test_jcl.lua
+          find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
