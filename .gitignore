@@ -1,0 +1,10 @@
+*.love
+*.apk
+*.exe
+*.zip
+*.jar
+*.class
+*.log
+.DS_Store
+client/assets/original/
+reverse-engineering/original/
