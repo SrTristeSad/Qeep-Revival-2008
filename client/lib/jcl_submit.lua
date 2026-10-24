@@ -1,6 +1,7 @@
 -- Bounded form-value collector. Inspired by n.b()/handler.Submit in the
 -- original JAR, but wire interoperability is NOT established.
 local M = {}
+local choices = require('lib.jcl_choices')
 local function fail(s) error('jcl_submit: '..s, 2) end
 local function valid_id(id)
   return type(id)=='string' and #id>0 and #id<=50 and id:match('^[%w_%-]+$') ~= nil
@@ -16,8 +17,7 @@ function M.collect(form, button)
         if values[id]~=nil then fail('duplicate field id') end
         local value
         if item.kind=='select' then
-          local option=item.options and item.options[item.selected or 1]
-          value=option and option.value or ''
+          value=choices.value(item)
         else value=item.value or '' end
         if type(value)~='string' or #value>2048 then fail('field value too long') end
         values[id]=value

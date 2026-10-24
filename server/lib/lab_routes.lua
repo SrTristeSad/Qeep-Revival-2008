@@ -6,7 +6,7 @@ local SUBMIT_XML = [[<?xml version="1.0" encoding="UTF-8"?>
     <p label="Página de testes inventada. Nenhum dado é armazenado."/>
     <input id="nickname" label="Apelido de teste" len="35" value=""/>
     <textarea id="message" label="Texto de teste" len="120">Olá!</textarea>
-    <select id="choice" label="Opção de teste">
+    <select id="choice" label="Opção de teste" type="4">
       <option label="Primeira opção" value="one" selected="true"/>
       <option label="Segunda opção" value="two"/>
     </select>

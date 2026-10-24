@@ -1,6 +1,7 @@
 -- Bounded offline reader for the JCL XML subset identified in h.class.
 -- It is NOT a complete implementation of the historical Java ME renderer.
 local M = {}
+local choices = require('lib.jcl_choices')
 local MAX_BYTES, MAX_DEPTH, MAX_NODES = 262144, 32, 512
 local function fail(message) error('jcl: ' .. message, 0) end
 local function unicode(cp)
@@ -162,10 +163,11 @@ local function items_from(node, out)
     for _, opt in ipairs(node.children) do
       if opt.tag == 'option' then
         local oa = opt.attrs
-        item.options[#item.options + 1] = {label = oa.label or all_text(opt), value = oa.value or all_text(opt)}
-        if oa.selected == 'true' then item.selected = #item.options end
+        item.options[#item.options + 1] = {label = oa.label or all_text(opt),
+          value = oa.value or all_text(opt), selected = oa.selected == 'true'}
       end
     end
+    choices.init(item, a.type)
   elseif tag == 'gauge' then
     item.value = tonumber(a.value) or 0
     item.max = tonumber(a.max) or 100

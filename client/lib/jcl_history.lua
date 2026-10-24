@@ -29,6 +29,8 @@ function M.pop(history)
   document.page=state.page
   document.selected=state.selected
   document.editing=false
+  document.choosing=false
+  document.choiceFocus=nil
   return document,state.scroll
 end
 return M

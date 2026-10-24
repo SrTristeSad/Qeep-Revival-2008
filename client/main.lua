@@ -56,7 +56,9 @@ end
 local function refreshLayout(ensure)
   if not document then return end
   computed=layout.build(jcl_view.form(document),font,220)
-  if ensure then scroll=layout.ensure_visible(computed,document.selected,scroll,VH)
+  if ensure and document.choosing then
+    scroll=layout.ensure_choice_visible(computed,document.selected,document.choiceFocus,scroll,VH)
+  elseif ensure then scroll=layout.ensure_visible(computed,document.selected,scroll,VH)
   else scroll=layout.clamp_scroll(computed,scroll,VH) end
 end
 local function openJCL(source, preservePrevious)
@@ -170,7 +172,7 @@ local function activateJCL()
   local active=jcl_view.item(document)
   local result=jcl_view.activate(document)
   if result=='editing' then love.keyboard.setTextInput(true)
-  elseif result=='selected' then refreshLayout(true)
+  elseif result=='choosing' or result=='selected' then refreshLayout(true)
   elseif result then navigate(result,active) end
 end
 function love.load()
@@ -206,6 +208,24 @@ local function drawJCL()
         if style.surface then paint(style.surface);rect('fill',10,y,220,height) end
         if style.border then paint(style.border);rect('line',10,y,220,height) end
         text(entry.title,17,y+5,204,'left',false,style.text)
+        if entry.choiceRows then
+          for _,choice in ipairs(entry.choiceRows) do
+            local optionY = y + choice.y
+            if optionY + choice.height >= TOP and optionY <= BOTTOM then
+              local chosen = item.selectedSet and item.selectedSet[choice.index] or false
+              local pointer = document.choosing and active and document.choiceFocus == choice.index
+              if pointer then
+                paint(c.highlight)
+                rect('fill',15,optionY,210,choice.height)
+              end
+              local indicator
+              if item.choiceType == 2 then indicator = chosen and '[x]' or '[ ]'
+              else indicator = chosen and '(*)' or '( )' end
+              text(indicator,17,optionY+3,32,'left',false,style.text)
+              text(choice.label,52,optionY+3,171,'left',false,style.text)
+            end
+          end
+        end
         if entry.detail then
           local _,wrapped=font:getWrap(entry.title,204)
           local detail_y=y+7+#wrapped*(font:getHeight()+2)
@@ -228,13 +248,16 @@ local function drawJCL()
     end
   end
   love.graphics.setScissor()
-  text(document.editing and 'Enter: concluir edicao' or 'Setas: navegar  Enter: abrir',7,283,226,'center')
+  local hint = document.editing and 'Enter: concluir edicao' or
+    (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir')
+  text(hint,7,283,226,'center')
   paint(c.purple);rect('fill',0,H-25,W,25)
   local left,right='Voltar','Abrir'
   for _,item in ipairs(form.items) do
     if item.kind=='lsk' then left=item.label or left end
     if item.kind=='rsk' then right=item.label or right end
   end
+  if document.choosing then left='Voltar';right='Concluir' end
   text(left,6,H-19,105,'left',false,c.white)
   text(right,125,H-19,108,'right',false,c.white)
 end
@@ -297,6 +320,15 @@ function love.keypressed(key)
     if not (document and document.editing) then key=numeric[key] or key end
   end
   if view=='jcl' and document then
+    if document.choosing then
+      if key=='up' then jcl_view.choice_move(document,-1);refreshLayout(true)
+      elseif key=='down' then jcl_view.choice_move(document,1);refreshLayout(true)
+      elseif key=='return' or key=='kpenter' or key=='space' then
+        jcl_view.choice_choose(document);refreshLayout(true)
+      elseif key=='escape' or key=='backspace' or key=='left' or key=='right' then
+        jcl_view.choice_close(document);refreshLayout(true) end
+      return
+    end
     if document.editing then
       if key=='return' or key=='kpenter' or key=='escape' then
         document.editing=false;love.keyboard.setTextInput(false)
@@ -348,12 +380,22 @@ local function pointer(x,y)
     end
   elseif view=='jcl' and document then
     if py>=H-25 then
-      if px<W/2 then softkey('lsk') else softkey('rsk') end
+      if document.choosing then jcl_view.choice_close(document);refreshLayout(true)
+      elseif px<W/2 then softkey('lsk') else softkey('rsk') end
     elseif py>=TOP and py<BOTTOM then
       local index=layout.hit(computed,px-10,py-TOP,scroll,220,VH)
       if index then
+        local item = jcl_view.form(document).items[index]
         if document.editing then document.editing=false;love.keyboard.setTextInput(false) end
-        document.selected=index;activateJCL();refreshLayout(true)
+        if document.choosing then jcl_view.choice_close(document) end
+        document.selected=index
+        local option=layout.choice_hit(computed,index,py-TOP,scroll)
+        if item.kind=='select' and option and item.choiceType~=4 then
+          document.choosing=true
+          document.choiceFocus=option
+          jcl_view.choice_choose(document,option)
+        else activateJCL() end
+        refreshLayout(true)
       end
     end
   elseif py>=H-34 then returnMenu() end

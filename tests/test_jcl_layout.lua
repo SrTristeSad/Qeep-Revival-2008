@@ -24,7 +24,7 @@ function font:getWrap(s,w)
 end
 local doc=jcl.parse('<jcl><form id="x"><p label="'..string.rep('A',125)..'"/>'..
   '<hr/><input len="4" label="Nome" value="Á"/><textarea label="Mensagem">Olá</textarea>'..
-  '<select label="Selecione"><option selected="true" label="Um"/></select>'..
+  '<select label="Selecione" type="4"><option selected="true" label="Um"/></select>'..
   '<gauge label="Progresso" value="10" max="20"/>'..
   '<button label="Abrir" href="#x"/><lsk label="Voltar"/><rsk label="Abrir"/></form></jcl>')
 local form=doc.forms[1]

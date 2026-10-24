@@ -9,7 +9,7 @@ local checks=0
 local function eq(a,b) assert(a==b,tostring(a)..' ~= '..tostring(b)); checks=checks+1 end
 local function rejects(fn) local ok=pcall(fn);eq(ok,false) end
 local xml=[=[<jcl><form id="f" title="Teste"><input id="nickname" value="abc"/>
-<textarea id="message">A &amp; B</textarea><select id="choice"><option label="1" value="one" selected="true"/>
+<textarea id="message">A &amp; B</textarea><select id="choice" type="4"><option label="1" value="one" selected="true"/>
 <option label="2" value="two"/></select><button id="send" label="Enviar" href="/revival/submit/echo"/>
 </form></jcl>]=]
 local form=jcl.parse(xml).forms[1]

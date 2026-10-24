@@ -8,6 +8,7 @@
     <button label="Sobre o protocolo" href="#about"/>
     <a label="Cores e separadores - laboratório" href="#styles" style="12"/>
     <a label="Formulário remoto - laboratório" href="/revival/page/submit"/>
+    <a label="Tipos de selecao (JAR)" href="#choices"/>
     <lsk label="Voltar" href="#index"/>
     <rsk label="Abrir" href="#fields"/>
   </form>
@@ -35,6 +36,24 @@
     <button label="Voltar ao índice" href="#index"/>
     <lsk label="Início" href="#index"/>
     <rsk label="Sobre" href="#about"/>
+  </form>
+  <form id="choices" title="Seletor - bytecode s.class">
+    <p label="Tipos confirmados no JAR; tela sintética de laboratório."/>
+    <select id="radio" label="Escolha única" type="1">
+      <option label="Roxo" value="purple" selected="true"/>
+      <option label="Verde" value="green"/>
+    </select>
+    <select id="multi" label="Marque várias" type="2">
+      <option label="Mensagens" value="chat" selected="true"/>
+      <option label="Amigos" value="friends"/>
+      <option label="Jogos" value="games"/>
+    </select>
+    <select id="compact" label="Compacta" type="4">
+      <option label="Dia" value="day" selected="true"/>
+      <option label="Noite" value="night"/>
+    </select>
+    <button label="Voltar" href="#index"/>
+    <lsk label="Início" href="#index"/>
   </form>
   <form id="about" title="Referência">
     <p>Os tipos de componentes vêm do bytecode de h.class.</p>
