@@ -18,6 +18,7 @@ function M.build(form, font, width)
     if item.kind ~= 'lsk' and item.kind ~= 'rsk' then
       local kind = item.kind
       local title = tostring(item.label or '')
+      if item.marker then title = item.marker .. (title ~= '' and (' '..title) or '') end
       local detail
       if kind == 'input' or kind == 'textarea' then
         detail = tostring(item.value or '')
@@ -41,7 +42,8 @@ function M.build(form, font, width)
         elseif kind == 'gauge' then height = height + 10
         elseif kind == 'img' then height = math.max(height, 44) end
       end
-      local entry = {index=index, item=item, title=title, detail=detail, y=y, height=height, lineHeight=line_height}
+      local entry = {index=index, item=item, title=title, detail=detail, y=y, height=height, lineHeight=line_height,
+        ruleWidth = kind == 'hr' and bound(item.width or 90, 1, width - 10) or nil}
       result.entries[#result.entries + 1] = entry
       y = y + height + 3
     end

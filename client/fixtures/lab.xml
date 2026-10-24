@@ -6,6 +6,7 @@
     <hr/>
     <a id="more" label="Abrir outro formulário" href="#fields" focused="true"/>
     <button label="Sobre o protocolo" href="#about"/>
+    <a label="Cores e separadores - laboratório" href="#styles" style="12"/>
     <lsk label="Voltar" href="#index"/>
     <rsk label="Abrir" href="#fields"/>
   </form>
@@ -19,6 +20,20 @@
     <gauge label="Progresso ilustrativo" value="35" max="100"/>
     <button label="Voltar ao índice" href="#index"/>
     <rsk label="Voltar" href="#index"/>
+  </form>
+  <form id="styles" title="Estilos verificados">
+    <p label="Atributos de registry.ini; páginas e posições inventadas para teste." style="11"/>
+    <p label="Amostra do estilo s1" style="1"/>
+    <p label="Amostra do estilo s2" style="2"/>
+    <p label="Amostra do estilo s7" style="7"/>
+    <p label="Amostra do estilo s11" style="11"/>
+    <li>Marcador de lista do interpretador original</li>
+    <a href="#about"/>
+    <hr w="90"/>
+    <hr w="160"/>
+    <button label="Voltar ao índice" href="#index"/>
+    <lsk label="Início" href="#index"/>
+    <rsk label="Sobre" href="#about"/>
   </form>
   <form id="about" title="Referência">
     <p>Os tipos de componentes vêm do bytecode de h.class.</p>

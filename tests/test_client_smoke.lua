@@ -58,5 +58,14 @@ love.touchreleased(1,200,290)
 love.draw();check(true)
 love.keypressed('pageup')
 love.keypressed('escape')
+-- Reopen the fixture, use the synthetic style lab and draw both separators.
+love.keypressed('return')
+love.keypressed('down')  -- '#about' button
+love.keypressed('down')  -- '#styles' link
+love.keypressed('return')
+love.draw();check(true)
+love.keypressed('right') -- synthetic right softkey -> '#about'
+love.draw();check(true)
+love.keypressed('escape')
 love.draw();check(true)
 print(('OK: %d mocked LÖVE client smoke checks'):format(n))

@@ -13,7 +13,7 @@ local function bad(xml)
   eq(ok,false)
 end
 local data = jcl.parse(source)
-eq(#data.forms,3)
+eq(#data.forms,4)
 eq(data.forms[1].id,'index')
 eq(data.forms[2].title,'Campos JCL')
 eq(data.forms[1].items[4].kind,'a')

@@ -12,6 +12,8 @@ local function unicode(cp)
 end
 local entities = {amp='&', lt='<', gt='>', quot='"', apos="'"}
 local function decode(s)
+  -- Bare ampersands must not silently turn malformed XML into page text.
+  if s:gsub('&[^;]*;', ''):find('&', 1, true) then fail('unterminated XML entity') end
   return (s:gsub('&([^;]+);', function(entity)
     if entities[entity] then return entities[entity] end
     local n = entity:match('^#([0-9]+)$')
@@ -30,7 +32,9 @@ local function parse_xml(source)
       return
     end
     local item = stack[#stack]
-    item.text = item.text .. decode(value)
+    local part = decode(value)
+    item.text = item.text .. part
+    item.parts[#item.parts + 1] = part
   end
   while at <= #source do
     local a = source:find('<', at, true)
@@ -44,7 +48,10 @@ local function parse_xml(source)
       local b = source:find(']]>', a + 9, true)
       if not b then fail('unclosed CDATA') end
       if #stack == 0 then fail('CDATA outside root') end
-      stack[#stack].text = stack[#stack].text .. source:sub(a + 9, b - 1)
+      local item = stack[#stack]
+      local part = source:sub(a + 9, b - 1)
+      item.text = item.text .. part
+      item.parts[#item.parts + 1] = part
       at = b + 3
     elseif source:sub(a, a + 1) == '<?' then
       local b = source:find('?>', a + 2, true)
@@ -96,10 +103,11 @@ local function parse_xml(source)
       end
       count = count + 1
       if count > MAX_NODES then fail('too many nodes') end
-      local node = {tag = tag, attrs = attrs, children = {}, text = ''}
+      local node = {tag = tag, attrs = attrs, children = {}, parts = {}, text = ''}
       if #stack > 0 then
         local parent = stack[#stack]
         parent.children[#parent.children + 1] = node
+        parent.parts[#parent.parts + 1] = node
       elseif root then fail('multiple root elements')
       else root = node end
       if not self_close then
@@ -114,9 +122,11 @@ local function parse_xml(source)
   return root
 end
 local function all_text(node)
-  local parts = {node.text}
-  for _, child in ipairs(node.children) do parts[#parts + 1] = all_text(child) end
-  return table.concat(parts)
+  local content = {}
+  for _, part in ipairs(node.parts) do
+    content[#content + 1] = type(part) == 'table' and all_text(part) or part
+  end
+  return table.concat(content)
 end
 local function items_from(node, out)
   local tag, a = node.tag, node.attrs
@@ -127,9 +137,20 @@ local function items_from(node, out)
   local included = {p=true, a=true, li=true, button=true, hr=true, img=true,
     input=true, textarea=true, select=true, gauge=true, lsk=true, rsk=true, calc=true}
   if not included[tag] then return end
-  local item = {kind = tag, id = a.id, label = a.label or a.clabel or all_text(node),
+  local child_text = all_text(node)
+  local label = a.label or a.clabel or child_text
+  local item = {kind = tag, id = a.id, label = label,
     href = a.href, style = a.style, focus = a.focus, focused = a.focused == 'true',
-    layout = a.layout, flags = tonumber(a.flags) or 0}
+    layout = a.layout, align = tonumber(a.align), flags = tonumber(a.flags) or 0}
+  -- h.class gives text-link/list widgets these symbols if their label is absent.
+  if a.label == nil and a.clabel == nil then
+    if tag == 'a' then item.marker = '>'
+    elseif tag == 'li' then item.marker = '*' end
+  end
+  if tag == 'hr' then
+    -- h.class sets ac.G to 90 for <hr>, overridden by the integer w attribute.
+    item.width = math.max(1,math.min(math.floor(tonumber(a.w) or 90),2000))
+  end
   if tag == 'input' or tag == 'textarea' then
     item.value = (tag == 'input' and a.value or all_text(node)) or ''
     item.length = math.max(0, math.min(tonumber(a.len) or (tag == 'input' and 30 or 2000), 2000))

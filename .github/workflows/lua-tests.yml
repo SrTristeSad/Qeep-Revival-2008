@@ -14,5 +14,6 @@ jobs:
           lua5.4 tests/test_protocol.lua
           lua5.4 tests/test_jcl.lua
           lua5.4 tests/test_jcl_layout.lua
+          lua5.4 tests/test_jcl_styles.lua
           lua5.4 tests/test_client_smoke.lua
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p

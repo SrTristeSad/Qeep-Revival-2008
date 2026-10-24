@@ -5,6 +5,7 @@ local jcl = require('lib.jcl')
 local jcl_view = require('lib.jcl_view')
 local layout = require('lib.jcl_layout')
 local legacy = require('lib.legacy_palette')
+local jcl_style = require('lib.jcl_style')
 local c = legacy.colors
 local W,H = 240,320
 local TOP,BOTTOM = 65,281
@@ -130,14 +131,14 @@ local function drawJCL()
     local height=entry.height
     if y+height>=TOP and y<=BOTTOM then
       if item.kind=='hr' then
-        paint(c.olive);rect('fill',15,y+5,210,1)
+        local width=entry.ruleWidth or 90
+        paint(c.olive);rect('fill',math.floor((W-width)/2),y+5,width,1)
       else
         local active=document.selected==entry.index
-        if active then
-          paint(c.highlight);rect('fill',10,y,220,height)
-          paint(c.purple);rect('line',10,y,220,height)
-        end
-        text(entry.title,17,y+5,204)
+        local style=jcl_style.resolve(item,active)
+        if style.surface then paint(style.surface);rect('fill',10,y,220,height) end
+        if style.border then paint(style.border);rect('line',10,y,220,height) end
+        text(entry.title,17,y+5,204,'left',false,style.text)
         if entry.detail then
           local _,wrapped=font:getWrap(entry.title,204)
           local detail_y=y+7+#wrapped*(font:getHeight()+2)
@@ -148,7 +149,7 @@ local function drawJCL()
           end
           local content=entry.detail
           if document.editing and active then content=content..'_' end
-          text(content,19,detail_y,198)
+          text(content,19,detail_y,198,'left',false,style.detail)
           if item.kind=='gauge' then
             local gy=y+height-13
             paint(c.purple);rect('line',18,gy,198,6)
