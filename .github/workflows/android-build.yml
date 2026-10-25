@@ -8,6 +8,9 @@ on:
       - 'tools/package_android.py'
       - 'tests/test_package_android.py'
       - '.github/workflows/android-build.yml'
+      - '.github/workflows/android-emulator-smoke.yml'
+      - 'tools/android_navigation.py'
+      - 'tests/test_android_navigation.py'
   workflow_dispatch:
 
 permissions:

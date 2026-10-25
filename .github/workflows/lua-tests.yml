@@ -53,6 +53,7 @@ jobs:
           python3 tests/test_j2me_capture.py
           python3 tests/test_visual_evidence.py
           python3 -m unittest discover -s tests -p 'test_android_smoke.py' -v
+          python3 -m unittest discover -s tests -p 'test_android_navigation.py' -v
           python3 tests/test_registry_tokens.py
           python3 tests/test_import_jar_assets.py
           python3 -m py_compile tools/audit_visual_jar.py tools/j2me_preflight.py tools/compare_visual.py tools/j2me_capture.py tools/visual_evidence.py

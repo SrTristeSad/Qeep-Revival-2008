@@ -15,25 +15,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Checkout the APK's exact source revision
+      - name: Checkout exact source revision that built the APK
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-      - name: Download the APK from the successful build
+      - name: Download APK from successful build run
         uses: actions/download-artifact@v4
         with:
           name: Qeep-Revival-2008-Android-debug-APK
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: android-artifact
-      - name: Verify decision rules
-        run: python3 -m unittest discover -s tests -p 'test_android_smoke.py' -v
-      - name: Allow hardware acceleration on hosted runner
+      - name: Install visual comparison dependency and run emulator-navigation unit tests
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 -m unittest discover -s tests -p 'test_android_smoke.py' -v
+          python3 -m unittest discover -s tests -p 'test_android_navigation.py' -v
+      - name: Enable KVM access on hosted Linux runner
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Boot Android 34 emulator and smoke test APK
+      - name: Boot emulator and validate installed Qeep APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -44,11 +47,15 @@ jobs:
           ram-size: 2048M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: python3 tools/android_smoke.py --apk android-artifact/Qeep-Revival-2008-Android-debug.apk --output android-smoke-results
-      - name: Store screenshot, logcat and launch results
+          script: |
+            python3 tools/android_smoke.py --apk android-artifact/Qeep-Revival-2008-Android-debug.apk --output android-smoke-results
+            python3 tools/android_navigation.py --output android-navigation-results
+      - name: Preserve screenshots, launcher output, and crashes even if startup fails
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Qeep-Android-emulator-startup-evidence
-          path: android-smoke-results/
+          name: Qeep-Android-emulator-navigation-evidence
+          path: |
+            android-smoke-results/
+            android-navigation-results/
           if-no-files-found: warn

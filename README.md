@@ -1,14 +1,16 @@
 # Qeep Revival 2008
 
+**Fase 26:** nova validação automatizada da navegação por toque no emulador Android 34 (abrir Sobre, voltar e abrir JCL offline), com capturas reais e análise das barras de interface. A tela inicial da Fase 25 já passou no emulador; o teste ampliado da Fase 26 só será considerado aprovado após GitHub Actions confirmar. Veja [`docs/android-navegacao-fase26.md`](docs/android-navegacao-fase26.md).
+
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 25
+## Estado atual: fase 25 — endereço LAN configurável no Android e no Windows
 
 - **Fase 25:** APK abriu no emulador Android 34 (execução do GitHub Actions 40241042226). Captura real confirmou muita margem vazia e rodapé com atalhos de desktop. Android agora usa ampliação proporcional fracionária para ocupar a largura disponível e botões de rodapé por toque (Abrir/Sair, Salvar/Cancelar); Windows mantém escala inteira. Testes em aparelho físico continuam pendentes. Veja [Fase 25](docs/ajustes-android-fase25.md).
 
-- **Fase 24:** teste de inicialização do APK com emulador Android no GitHub Actions; screenshot, logcat e relatório disponíveis após a execução. Android pausa consultas ao perder foco e restaura o teclado de edição ao retornar. Veja [guia](docs/validacao-android-fase24.md). — configuração LAN Android e Windows
+- **Fase 24:** teste de abertura do APK Android em emulador no GitHub Actions, com screenshot, logcat e relatório, mais tratamento de pausa e retomada no Android. Veja [validação Android](docs/validacao-android-fase24.md).
 
-- **Fase 23:** servidor privado com IP e porta configuráveis, armazenamento local e migração de host.txt; Android sem loopback como padrão; IME reposicionado após resize. APK da Fase 22 compilado com sucesso; testes em telefone real pendentes. Veja docs/android-rede-fase23.md.
+- **Fase 23:** IP/porta privados configuráveis (`192.168.1.50:5190`), configuração persistente por aplicativo, migração de `host.txt`, Android sem `127.0.0.1` como padrão inicial e teclado reposicionado após redimensionamento. A compilação do APK da Fase 22 foi aprovada; **inicialização em dispositivo real ainda não verificada**. Veja [configuração de rede da Fase 23](docs/android-rede-fase23.md).
 
 - **Fase 22:** gestos em tela sensível ao toque com limiar escalonado, rolagem limitada à área JCL e posicionamento do teclado virtual nos campos de entrada; testes de eventos simulados em Lua. A compilação de APK debug da Fase 21 foi concluída no GitHub Actions, mas a execução em aparelho físico continua pendente. Veja [toque Android](docs/android-toque-fase22.md).
 
