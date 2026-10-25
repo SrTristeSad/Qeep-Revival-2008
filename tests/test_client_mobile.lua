@@ -33,7 +33,7 @@ love.load()
 check(visible('Abrir JCL (offline)'))
 love.touchpressed(1,80,2*(91+3*22+9))
 love.touchreleased(1,80,2*(91+3*22+9))
-check(visible('IP ou nome do servidor'))
+check(visible('Servidor LAN (IPv4:porta)'))
 local hostKeyboard=keyboardCalls[#keyboardCalls]
 check(#hostKeyboard==5 and hostKeyboard[1]==true)
 check(hostKeyboard[2]>0 and hostKeyboard[3]>0 and hostKeyboard[4]>0)

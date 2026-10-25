@@ -25,6 +25,8 @@ jobs:
           lua5.4 tests/test_client_mobile.lua
           lua5.4 tests/test_submit.lua
           lua5.4 tests/test_lab_host.lua
+          lua5.4 tests/test_connection_settings.lua
+          lua5.4 tests/test_client_connection.lua
           lua5.4 tests/test_lab_client.lua
           lua5.4 tests/test_jcl_history.lua
           lua5.4 tests/test_client_history.lua

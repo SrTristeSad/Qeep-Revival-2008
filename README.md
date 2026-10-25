@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 22 — gestos de toque e suporte ao teclado virtual
+## Estado atual: fase 23 — configuração LAN Android e Windows
+
+- **Fase 23:** servidor privado com IP e porta configuráveis, armazenamento local e migração de host.txt; Android sem loopback como padrão; IME reposicionado após resize. APK da Fase 22 compilado com sucesso; testes em telefone real pendentes. Veja docs/android-rede-fase23.md.
 
 - **Fase 22:** gestos em tela sensível ao toque com limiar escalonado, rolagem limitada à área JCL e posicionamento do teclado virtual nos campos de entrada; testes de eventos simulados em Lua. A compilação de APK debug da Fase 21 foi concluída no GitHub Actions, mas a execução em aparelho físico continua pendente. Veja [toque Android](docs/android-toque-fase22.md).
 
