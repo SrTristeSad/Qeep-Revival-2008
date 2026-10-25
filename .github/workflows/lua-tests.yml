@@ -46,8 +46,9 @@ jobs:
           lua5.4 tests/test_visual_capture.lua
           python3 tests/test_visual_tools.py
           python3 tests/test_j2me_capture.py
+          python3 tests/test_visual_evidence.py
           python3 tests/test_import_jar_assets.py
-          python3 -m py_compile tools/audit_visual_jar.py tools/j2me_preflight.py tools/compare_visual.py tools/j2me_capture.py
+          python3 -m py_compile tools/audit_visual_jar.py tools/j2me_preflight.py tools/compare_visual.py tools/j2me_capture.py tools/visual_evidence.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
       - name: Test real TCP localhost roundtrip
         run: |

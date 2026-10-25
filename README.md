@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 17 — captura controlada em emulador sem rede
+## Estado atual: fase 18 — revisão de evidências visuais, sem captura autêntica disponível
+
+- **Fase 18:** ferramenta `tools/visual_evidence.py` para revisar capturas reais (hashes, classificação manual e recorte), rejeitar telas só do emulador e comparar pixels com um screenshot do LÖVE. **Nenhuma tela autêntica do Qeep foi obtida neste ambiente**. Ver [`docs/revisao-capturas-fase18.md`](docs/revisao-capturas-fase18.md).
 
 - **Fase 16:** ferramenta de pré-verificação e execução isolada do JAR Java ME, comparação de capturas PNG e captura local do cliente LÖVE via tecla `F12`. **Ainda não foi obtida captura autenticada do emulador**; não existe equivalência visual 1:1 comprovada. Leia [procedimento seguro e reprodutível](docs/fidelidade-capturas-fase16.md).
 
