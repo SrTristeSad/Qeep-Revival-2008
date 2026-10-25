@@ -12,17 +12,20 @@ local jcl_history = require('lib.jcl_history')
 local assets = require('lib.legacy_assets')
 local symbols = require('lib.legacy_symbols')
 local jcl_screen = require('lib.jcl_screen')
+local viewport = require('lib.legacy_viewport')
+local visual_reference = require('lib.legacy_reference')
 local social_poll = require('lib.social_poll')
 local social_send = require('lib.social_send')
 local c = legacy.colors
 local W,H = 240,320
+local MENU_Y,MENU_ROW=91,22
 local TOP,BOTTOM = 65,281
 local VH = BOTTOM-TOP
 local view, selected, serverHost, status = 'menu',1,'127.0.0.1',''
 local options = {
   'Abrir JCL (offline)', 'Receber JCL do servidor', 'Testar servidor local',
   'Configurar endereco IP', 'Composicao JCL (laboratorio)', 'Sobre o projeto',
-  'Social local (prototipo)', 'Sair'
+  'Social local (prototipo)', 'Recursos originais (JAR)', 'Sair'
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touches = {}
@@ -42,12 +45,12 @@ local function text(s,x,y,width,align,useBig,color)
 end
 local function transform()
   local dw,dh=love.graphics.getDimensions()
-  local scale=math.min(dw/W,dh/H)
-  return scale,(dw-W*scale)/2,(dh-H*scale)/2
+  local t=viewport.fit(dw,dh,W,H)
+  return t.scale,t.x,t.y
 end
 local function localPoint(x,y)
-  local scale,ox,oy=transform()
-  return (x-ox)/scale,(y-oy)/scale
+  local dw,dh=love.graphics.getDimensions()
+  return viewport.fromWindow(viewport.fit(dw,dh,W,H),x,y)
 end
 local function cancelPoll()
   if pollJob then social_poll.cancel(pollJob);pollJob=nil end
@@ -167,7 +170,8 @@ local function activateMenu()
   elseif selected==7 then
     local source,err=socketRequest('/revival/social/start')
     if source then openJCL(source,false,true) else showError('Servidor social indisponivel: '..tostring(err)) end
-  elseif selected==8 then love.event.quit() end
+  elseif selected==8 then view='visual'
+  elseif selected==9 then love.event.quit() end
 end
 local function navigate(href, activated)
   if type(href)~='string' or href=='' then return end
@@ -447,6 +451,46 @@ local function drawJCL()
   text(left.label,6,H-19,105,'left',false,c.white)
   text(right.label,125,H-19,108,'right',false,c.white)
 end
+-- Evidence gallery: does not purport to reproduce any network-delivered 2008 screen.
+local function drawReference()
+  text(visual_reference.title,8,32,224,'center',true)
+  paint(c.olive);rect('fill',9,51,222,1)
+  local logo=assets.load('logo.png',love.graphics,imageCache)
+  if logo then
+    paint(c.white)
+    love.graphics.draw(logo,12,59)
+  else
+    text('logo.png: importe o JAR',11,63,150)
+  end
+  local icon=assets.load('icon_15x15.png',love.graphics,imageCache)
+  if icon then
+    paint(c.white)
+    love.graphics.draw(icon,203,73)
+  else text('15x15',187,76,48) end
+  text('Cores extraidas de registry.ini',10,108,220,'left')
+  for i,swatch in ipairs(visual_reference.swatches) do
+    local column=(i-1)%2
+    local row=math.floor((i-1)/2)
+    local x=12+column*114
+    local y=128+row*22
+    paint(visual_reference.color(swatch))
+    rect('fill',x,y,23,15)
+    paint(c.dark);rect('line',x,y,23,15)
+    text(swatch.label,x+29,y+1,79,'left')
+  end
+  text('Sprites 14 a 17 (12x6)',10,219,220)
+  local strip=assets.load('kui/symbols.png',love.graphics,imageCache)
+  if strip then
+    for i=0,3 do
+      paint(c.white)
+      symbols.draw(love.graphics,strip,14+i,25+i*48,241,1,30)
+      text(tostring(14+i),42+i*48,236,23,'left')
+    end
+  else text('kui/symbols.png nao importado',10,241,220) end
+  text('Back  |  Select  |  Options',8,266,224,'center')
+  paint(c.purple);rect('fill',0,H-25,W,25)
+  text('Voltar: Esc',8,H-19,224,'center',false,c.white)
+end
 function love.draw()
   local scale,ox,oy=transform()
   paint({0.18,0.18,0.18})
@@ -458,6 +502,8 @@ function love.draw()
   text('QEEP REVIVAL 2008',7,6,W-14,'center',false,c.white)
   if view=='jcl' and document then
     drawJCL()
+  elseif view=='visual' then
+    drawReference()
   else
     if view=='menu' and originalLogo and love.graphics.draw then
       paint(c.white)
@@ -470,10 +516,10 @@ function love.draw()
     paint(c.olive);rect('fill',9,83,W-18,1)
     if view=='menu' then
       for i,option in ipairs(options) do
-        local y=91+(i-1)*24
+        local y=MENU_Y+(i-1)*MENU_ROW
         if selected==i then
-          paint(c.highlight);rect('fill',11,y,W-22,23)
-          paint(c.purple);rect('line',11,y,W-22,23)
+          paint(c.highlight);rect('fill',11,y,W-22,MENU_ROW-1)
+          paint(c.purple);rect('line',11,y,W-22,MENU_ROW-1)
         end
         text((selected==i and '> ' or '  ')..option,16,y+4,W-32)
       end
@@ -561,11 +607,11 @@ end
 local function pointer(x,y)
   if sendJob then return end
   local px,py=localPoint(x,y)
-  if px<0 or px>W or py<0 or py>H then return end
+  if not px then return end
   if view=='menu' then
     for i=1,#options do
-      local y=91+(i-1)*24
-      if py>=y and py<=y+23 then selected=i;activateMenu();break end
+      local y=MENU_Y+(i-1)*MENU_ROW
+      if py>=y and py<y+MENU_ROW then selected=i;activateMenu();break end
     end
   elseif view=='jcl' and document then
     if py>=H-25 then

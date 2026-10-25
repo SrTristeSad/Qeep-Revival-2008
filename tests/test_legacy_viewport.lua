@@ -1,0 +1,20 @@
+package.path='client/?.lua;client/lib/?.lua;'..package.path
+local v=require('lib.legacy_viewport')
+local tests=0
+local function eq(a,b) assert(a==b,tostring(a)..' != '..tostring(b));tests=tests+1 end
+local exact=v.fit(480,640)
+eq(exact.scale,2);eq(exact.x,0);eq(exact.y,0)
+local laptop=v.fit(1024,768)
+eq(laptop.scale,2);eq(laptop.x,272);eq(laptop.y,64)
+local small=v.fit(200,300)
+eq(small.scale,5/6);eq(small.x,0);eq(small.y,16)
+local wide=v.fit(1920,1080)
+eq(wide.scale,3);eq(wide.x,600);eq(wide.y,60)
+local x,y=v.toWindow(laptop,32,45)
+local a,b=v.fromWindow(laptop,x,y)
+eq(a,32);eq(b,45)
+eq(v.fromWindow(laptop,0,0),nil)
+eq(v.fromWindow(exact,480,640),nil)
+eq(v.fromWindow(exact,0,0),0)
+local ok=pcall(v.fit,0,320);eq(ok,false)
+print(('OK: %d viewport checks'):format(tests))

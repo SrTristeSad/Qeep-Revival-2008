@@ -40,7 +40,11 @@ jobs:
           lua5.4 tests/test_client_contacts.lua
           lua5.4 tests/test_client_poll.lua
           lua5.4 tests/test_original_logo.lua
+          lua5.4 tests/test_legacy_viewport.lua
+          lua5.4 tests/test_legacy_reference.lua
+          lua5.4 tests/test_client_reference.lua
           python3 tests/test_import_jar_assets.py
+          python3 -m py_compile tools/audit_visual_jar.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
       - name: Test real TCP localhost roundtrip
         run: |

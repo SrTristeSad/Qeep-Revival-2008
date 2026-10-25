@@ -1,0 +1,37 @@
+{
+  "source": "user-supplied qeep-94724.jar / registry.ini / PNG headers",
+  "version": "qeep_en-1.29",
+  "commands": {
+    "back.cmd": "Back",
+    "kui.cmd.select": "Select",
+    "kui.cmd.cancel": "Cancel",
+    "kui.cmd.options": "Options",
+    "ok.cmd": "OK"
+  },
+  "colors": {
+    "s0.bg": "ebffb9",
+    "s2.bg": "cdff3c",
+    "s7.cbg": "a0b419",
+    "s10.bg": "a1b617",
+    "s11.tc": "3c143c"
+  },
+  "images": {
+    "logo.png": {
+      "sha256": "6e8c1ab01588fd87e634a3cd673c06a69d2706e7fe32ef1683ba30809d630b23",
+      "width": 128,
+      "height": 42
+    },
+    "icon_15x15.png": {
+      "sha256": "50e658d46dc33240ae9d9f46e25e59473da9fbbd428095882529a6e942040e0d",
+      "width": 15,
+      "height": 15
+    },
+    "kui/symbols.png": {
+      "sha256": "37c96b453c4711aee5f7de7dd7d1b0499f07bdb02815e8f69bc51573e7b08cf0",
+      "width": 12,
+      "height": 180
+    }
+  },
+  "screens_recovered": false,
+  "note": "Asset/registry evidence only; historical server pages are absent."
+}
