@@ -184,7 +184,7 @@ local function activateMenu()
     if source then openJCL(source) else showError('Falha no servidor: '..tostring(err)) end
   elseif selected==3 then
     local data,err=socketRequest('/revival/ping')
-    if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':'..serverPort\n\nTeste somente de transporte.')
+    if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':'..serverPort..'\n\nTeste somente de transporte.')
     else showError('Falha de teste: '..tostring(err or data)) end
   elseif selected==4 then
     endpointDraft=connection_settings.format(serverHost,serverPort) or ''
