@@ -2,8 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 12 — cadastro e login locais com código de acesso persistente (protótipo)
+## Estado atual: fase 13 — contatos e mensagens persistentes entre contas (protótipo)
 
+- **Fase 13:** contatos vinculados a contas: convite, aceite/recusa, chat direto com histórico local salvo em `server/data/social.db` e polling de novas mensagens. Visitantes continuam com mensagens temporárias. O contato deve aprovar a solicitação antes que o chat seja liberado. Dados em texto simples no disco; teste somente em máquina/rede privada, sem TLS. Veja [Fase 13](docs/contatos-fase13.md).
 - **Fase 12:** contas persistentes locais, entrada por código aleatório de 192 bits, login/logout e visitantes preservados. O servidor grava `server/data/accounts.db` (ignorado pelo Git). Não há TLS nem recuperação de código; somente laboratório privado Linux/POSIX. Veja [documentação da Fase 12](docs/contas-fase12.md).
 
 
@@ -21,13 +22,13 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 - **Fase 9:** laboratório social **novo e temporário**, com apelidos de visitantes, lista de pessoas conectadas e mensagens entre clientes na mesma rede local usando JCL. Não há login real, contatos, histórico permanente ou telas históricas recuperadas. Veja `docs/social-fase9.md`.
 - **Fase 11:** o envio de mensagens é não bloqueante e confirma a nova tela somente após resposta válida. Em falhas, o rascunho é mantido e **não há reenvio automático**, pois uma entrega pode ter ocorrido sem confirmação. O servidor de laboratório usa um laço TCP cooperativo para até 64 conexões simultâneas, com limites de tamanho e tempo por cliente. Veja `docs/chat-assincrono-fase11.md`.
 - **Fase 10:** conversas de laboratório verificam novas mensagens a cada 3 segundos com LuaSocket não bloqueante. A resposta por revisão evita redesenhar a página sem mudanças. O rascunho, a seleção e o histórico Voltar são preservados; a atualização visual espera o fim da edição. Consulte `docs/atualizacao-social-fase10.md`.
-- Ainda não existem contas autenticadas, contatos persistentes, jogos ou telas históricas reconstruídas. As demonstrações **não devem ser confundidas com as telas originais do Qeep**.
+- Contas, contatos e mensagens persistentes estão disponíveis somente no **laboratório local experimental**. Ainda não existem jogos, interface social histórica recuperada nem autenticação adequada para uso público. As demonstrações **não devem ser confundidas com as telas originais do Qeep**.
 
 ## Executar
 
 **Cliente Windows / desktop:** instale [LÖVE 11.x](https://love2d.org/), abra a pasta `client` com LÖVE ou, no terminal, use `love client` a partir da raiz do repositório.
 
-**Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde ao laboratório de protocolo e às rotas sintéticas `/revival/social/...` (descritas em `docs/social-fase9.md`) e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O laboratório social não possui autenticação segura, TLS ou armazenamento permanente. Não exponha na internet.
+**Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde ao laboratório de protocolo e às rotas sintéticas `/revival/social/...` (descritas em `docs/social-fase9.md`) e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O laboratório possui armazenamento persistente para contas e conversas entre contatos, mas **não possui TLS nem autenticação segura para a Internet**. Os dados do chat não são criptografados no disco. Não exponha na internet.
 
 **Recursos gráficos originais opcionais:** com o JAR de referência em mãos, execute `python tools/import_jar_assets.py qeep-94724.jar` na raiz. Ele valida os hashes antes de extrair os três PNGs para `client/assets/original/` (ignorados no Git). O logotipo passa a aparecer na tela inicial de laboratório. Para mais informações, veja `docs/navegacao-e-assets-fase5.md`.
 
@@ -60,11 +61,13 @@ client/lib/social_poll.lua Transporte não bloqueante da consulta social de labo
 client/lib/social_send.lua Envio de mensagens de demonstração, não bloqueante e sem retry automático
 client/lib/legacy_palette.lua Cores verificadas em registry.ini
 client/fixtures/         Telas sintéticas exclusivamente de teste
-server/                   Servidor Lua cooperativo de laboratório, incluindo visitantes temporários
+server/                   Servidor Lua cooperativo: visitantes temporários e contas persistentes
 server/lib/tcp_loop.lua  Atendimento simultâneo e limitado de sockets
+server/lib/account_store.lua Cadastro local e códigos de acesso (Fase 12)
+server/lib/social_store.lua Contatos e histórico persistente (Fase 13)
 tests/                    Testes do codec
 tools/import_jar_assets.py Importação local verificada dos três PNGs históricos
-docs/                     Documentação e evidências (fases 1–11)
+docs/                     Documentação e evidências (fases 1–13)
 ```
 
 ## Próximos marcos
@@ -94,3 +97,7 @@ O chat local pode receber novas mensagens automaticamente enquanto está aberto 
 ### Fase 11 — envio assíncrono e conexões concorrentes
 
 O envio de mensagens deixou de esperar pela rede dentro do callback de clique. O servidor processa várias conexões sem deixar uma transmissão lenta bloquear as demais. [Detalhes, limites e testes](docs/chat-assincrono-fase11.md). Continua sendo um laboratório LAN sem autenticação real ou persistência.
+
+### Fase 13 — contatos e mensagens persistentes
+
+Usuários cadastrados podem enviar convites, aprovar ou recusar contatos e conversar após aprovação, com mensagens mantidas no servidor local mesmo depois de reiniciá-lo. O modo visitante permanece temporário. Os limites, o arquivo `social.db` e os riscos de privacidade estão descritos em [docs/contatos-fase13.md](docs/contatos-fase13.md).

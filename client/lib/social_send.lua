@@ -11,14 +11,14 @@ local function fail(job, reason)
   return {ok=false,error=tostring(reason)}
 end
 function M.start(socklib, codec, host, port, token, peer, fields)
-  if type(peer)~='string' or not peer:match('^[1-9]%d*$') or #peer>10 then
-    return nil,'Destinatário inválido'
-  end
+  local guest=type(peer)=='string' and peer:match('^[1-9]%d*$') and #peer<=10
+  local account=type(peer)=='string' and peer:match('^[a-z][a-z0-9_]*$') and #peer>=3 and #peer<=24
+  if not guest and not account then return nil,'Destinatário inválido' end
   if type(token)~='string' or token=='' or #token>128 then return nil,'Sessão ausente' end
   if type(fields)~='table' or fields.submitId~='send' or type(fields.message)~='string' or
      fields.message=='' or #fields.message>960 then return nil,'Mensagem inválida' end
   local props={session=token,submitId='send',message=fields.message,lang='pt-BR'}
-  local path='/revival/social/send/'..peer
+  local path=(account and '/revival/social/account/send/' or '/revival/social/send/')..peer
   local ok,request=pcall(codec.encodeRequest,'P',path,props,'')
   if not ok then return nil,request end
   local conn,err=socklib.tcp()

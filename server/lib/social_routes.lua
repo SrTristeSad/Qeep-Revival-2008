@@ -1,11 +1,14 @@
 -- Invented LAN-only social prototype, NOT the historical Qeep backend.
--- Phase 12: durable accounts with randomly generated access codes; chat remains ephemeral.
+-- Phase 13: durable account contacts and chats; guest chats remain ephemeral.
 local M = {}
 local utf8edit = require('utf8_edit')
 local people, sessions, messages = {}, {}, {}
-local accountStore = nil
+local accountStore, socialStore = nil, nil
 local accountLib = require('account_store')
 function M.configure_accounts(store) accountStore=store end
+function M.configure_social(store) socialStore=store end
+local socialLib=require('social_store')
+local allowed
 local nextId, messageSequence, MAX_PEOPLE, MAX_MESSAGES, MAX_IDLE = 1, 0, 24, 160, 3600
 local function escape(s)
   return (tostring(s):gsub('&','&amp;'):gsub('<','&lt;'):gsub('>','&gt;')
@@ -65,6 +68,7 @@ local function home(person)
   return xml('Sala social — laboratório','home',
     '<p label="Olá, '..escape(person.name)..'. '..(person.account and 'Conta local persistente.' or 'Você é visitante temporário.')..'"/>'..
     '<a label="Pessoas conectadas" href="/revival/social/people" focused="true"/>'..
+    (person.account and '<a label="Meus contatos e mensagens salvas" href="/revival/social/contacts"/>' or '')..
     '<a label="Atualizar sala" href="/revival/social/home"/>'..
     '<p label="Mensagens não são salvas em disco. Não compartilhe dados pessoais."/>'..
     '<a label="Encerrar sessão" href="/revival/social/logout"/>'..
@@ -116,6 +120,99 @@ local function chat_page(person, other)
   return xml('Conversa — laboratório','chat',table.concat(parts),person.token,
     {chatPeer=tostring(other.id),chatRevision=tostring(revision)})
 end
+-- Durable account features use account usernames, not per-process visitor IDs.
+local function contacts_page(person)
+  local contacts,pending,sent=socialLib.list(socialStore,person.account)
+  local parts={
+    '<p label="Contatos persistentes (função nova do Revival, não Qeep original)."/>',
+    '<p label="Os pedidos precisam ser aprovados para habilitar mensagens."/>',
+    '<input id="contact" label="Nome de usuário para convidar" len="24"/>',
+    '<button id="request" label="Enviar solicitação" href="/revival/social/contact/request"/>'
+  }
+  parts[#parts+1]='<p label="Contatos aprovados:"/>'
+  for _,name in ipairs(contacts) do
+    parts[#parts+1]='<a label="'..escape(name)..'" href="/revival/social/account/chat/'..name..'"/>'
+  end
+  if #contacts==0 then parts[#parts+1]='<p label="Nenhum contato aprovado."/>' end
+  parts[#parts+1]='<p label="Solicitações recebidas:"/>'
+  for _,name in ipairs(pending) do
+    parts[#parts+1]='<p label="'..escape(name)..' deseja adicionar você"/>'
+    parts[#parts+1]='<button id="accept" label="Aceitar '..escape(name)..'" href="/revival/social/contact/accept/'..name..'"/>'
+    parts[#parts+1]='<button id="reject" label="Recusar '..escape(name)..'" href="/revival/social/contact/reject/'..name..'"/>'
+  end
+  if #pending==0 then parts[#parts+1]='<p label="Nenhuma solicitação recebida."/>' end
+  parts[#parts+1]='<p label="Solicitações enviadas: '..escape(table.concat(sent,', '))..'"/>'
+  parts[#parts+1]='<a label="Atualizar" href="/revival/social/contacts"/>'
+  parts[#parts+1]='<lsk label="Sala social" href="/revival/social/home"/>'
+  return xml('Contatos — laboratório','contacts',table.concat(parts),person.token)
+end
+local function stored_chat_page(person,username)
+  local messages,revision=socialLib.thread(socialStore,person.account,username)
+  if not messages then return nil,revision end
+  local parts={'<p label="Chat persistente com '..escape(username)..' (Revival experimental)."/>'}
+  for _,m in ipairs(messages) do
+    parts[#parts+1]='<p label="'..escape((m.from==person.account and 'Você' or username)..': '..m.text)..'"/>'
+  end
+  if #messages==0 then parts[#parts+1]='<p label="Nenhuma mensagem salva."/>' end
+  parts[#parts+1]='<textarea id="message" label="Escrever mensagem" len="240"></textarea>'
+  parts[#parts+1]='<button id="send" label="Enviar" href="/revival/social/account/send/'..username..'"/>'
+  parts[#parts+1]='<a label="Atualizar conversa" href="/revival/social/account/chat/'..username..'"/>'
+  parts[#parts+1]='<lsk label="Contatos" href="/revival/social/contacts"/>'
+  parts[#parts+1]='<rsk label="Enviar" href="/revival/social/account/send/'..username..'"/>'
+  return xml('Conversa — laboratório','chat',table.concat(parts),person.token,
+    {chatPeer=username,chatRevision=tostring(revision)})
+end
+local function account_route(person,req)
+  if not person.account then return reply_error('Entre em uma conta para usar contatos persistentes') end
+  if not accountStore or not socialStore then return reply_error('Armazenamento de contatos indisponível') end
+  local path,props=req.path,req.properties or {}
+  if path=='/revival/social/contacts' and req.kind=='O' then
+    return {ok=true,payload=contacts_page(person)}
+  end
+  if path=='/revival/social/contact/request' and req.kind=='P' then
+    if not allowed(props,{contact=true,submitId=true,lang=true,session=true}) or props.submitId~='request' then
+      return reply_error('Campos inválidos')
+    end
+    local recipient=props.contact
+    if not accountLib.allowed(recipient) or not accountStore.records[recipient] then return reply_error('Conta não encontrada') end
+    local ok,err=socialLib.request(socialStore,person.account,recipient)
+    if not ok then return reply_error(err) end
+    return {ok=true,payload=contacts_page(person)}
+  end
+  local action,user=path:match('^/revival/social/contact/(%a+)/([a-z][a-z0-9_]*)$')
+  if (action=='accept' or action=='reject') and req.kind=='P' then
+    if not allowed(props,{contact=true,submitId=true,lang=true,session=true}) or props.submitId~=action then
+      return reply_error('Confirmação inválida')
+    end
+    local ok,err=socialLib.answer(socialStore,person.account,user,action=='accept')
+    if not ok then return reply_error(err) end
+    return {ok=true,payload=contacts_page(person)}
+  end
+  local kind,peer=path:match('^/revival/social/account/(%a+)/([a-z][a-z0-9_]*)$')
+  if kind=='chat' and req.kind=='O' then
+    local page,err=stored_chat_page(person,peer)
+    if not page then return reply_error(err) end
+    return {ok=true,payload=page}
+  elseif kind=='poll' and req.kind=='O' then
+    if not allowed(props,{session=true,since=true}) then return reply_error('Campos inválidos') end
+    if type(props.since)~='string' or #props.since>16 or not props.since:match('^%d+$') then
+      return reply_error('Revisão inválida')
+    end
+    local _,revision=socialLib.thread(socialStore,person.account,peer)
+    if not revision then return reply_error('Contato não aprovado') end
+    if tonumber(props.since)==revision then return {ok=true,unchanged=true,payload=''} end
+    return {ok=true,payload=assert(stored_chat_page(person,peer))}
+  elseif kind=='send' and req.kind=='P' then
+    if not allowed(props,{message=true,submitId=true,lang=true,session=true}) or props.submitId~='send' then
+      return reply_error('Campos de envio inválidos')
+    end
+    local msg=type(props.message)=='string' and trim(props.message) or ''
+    local seq,err=socialLib.send(socialStore,person.account,peer,msg)
+    if not seq then return reply_error(err) end
+    return {ok=true,payload=assert(stored_chat_page(person,peer))}
+  end
+  return reply_error('Ação de conta não permitida')
+end
 local function register_page()
   return xml('Criar conta local — laboratório','register',
     '<p label="Serviço de teste local. Sem TLS. Não use dados pessoais."/>'..
@@ -156,7 +253,7 @@ local function new_person(name,account)
   nextId=nextId+1;people[person.id]=person;sessions[token]=person
   return person
 end
-local function allowed(props,keys)
+allowed=function(props,keys)
   for k in pairs(props) do if not keys[k] then return false end end
   return true
 end
@@ -227,6 +324,10 @@ function M.handle(req)
     sessions[person.token]=nil;people[person.id]=nil
     local page=welcome():gsub('<form ', '<prop n="sessionClear" v="true"/><form ',1)
     return {ok=true,payload=page}
+  end
+  if p=='/revival/social/contacts' or p:sub(1,24)=='/revival/social/contact/' or
+      p:sub(1,24)=='/revival/social/account/' then
+    return account_route(person,req)
   end
   if req.kind=='O' and p=='/revival/social/home' then return {ok=true,payload=home(person)} end
   if req.kind=='O' and p=='/revival/social/people' then return {ok=true,payload=people_page(person)} end

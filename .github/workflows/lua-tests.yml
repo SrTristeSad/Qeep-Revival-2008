@@ -33,6 +33,9 @@ jobs:
           lua5.4 tests/test_tcp_loop.lua
           lua5.4 tests/test_account_store.lua
           lua5.4 tests/test_social_accounts.lua
+          lua5.4 tests/test_social_store.lua
+          lua5.4 tests/test_social_contacts.lua
+          lua5.4 tests/test_client_contacts.lua
           lua5.4 tests/test_client_poll.lua
           lua5.4 tests/test_original_logo.lua
           python3 tests/test_import_jar_assets.py

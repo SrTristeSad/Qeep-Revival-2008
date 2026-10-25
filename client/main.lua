@@ -60,7 +60,10 @@ local function activeChatPeer()
   if view~='jcl' or not document or not guestSession then return nil end
   local props=document.document.props or {}
   if jcl_view.form(document).id~='chat' then return nil end
-  if type(props.chatPeer)=='string' and props.chatPeer:match('^[1-9]%d*$') then return props.chatPeer end
+  if type(props.chatPeer)=='string' and (props.chatPeer:match('^[1-9]%d*$') or
+      (props.chatPeer:match('^[a-z][a-z0-9_]*$') and #props.chatPeer>=3 and #props.chatPeer<=24)) then
+    return props.chatPeer
+  end
   return nil
 end
 local function returnMenu()
@@ -185,14 +188,18 @@ local function navigate(href, activated)
     if source then openJCL(source,true) else showError('Falha no servidor: '..tostring(err)) end
   elseif href:match('^/revival/social/') then
     local authSubmit=href=='/revival/social/register/submit' or href=='/revival/social/login/submit'
-    local submitting=href=='/revival/social/join' or authSubmit or href:match('^/revival/social/send/[1-9]%d*$')
+    local contactPost=href=='/revival/social/contact/request' or
+      href:match('^/revival/social/contact/(%a+)/')
+    local accountSend=href:match('^/revival/social/account/send/([a-z][a-z0-9_]*)$')
+    local submitting=href=='/revival/social/join' or authSubmit or contactPost or
+      accountSend or href:match('^/revival/social/send/[1-9]%d*$')
     local props={}
     if submitting then
       local ok,fields=pcall(jcl_submit.collect,jcl_view.form(document),activated)
       if not ok then return showError(fields) end
       props=fields;props.lang='pt-BR'
     end
-    local peer=href:match('^/revival/social/send/([1-9]%d*)$')
+    local peer=href:match('^/revival/social/send/([1-9]%d*)$') or accountSend
     if peer then
       if sendJob then return end
       if not lab_host.valid(serverHost) then return showError('Endereço local inválido') end
@@ -320,7 +327,10 @@ local function softkey(kind)
     local button=nil
     if cmd.href=='/revival/submit/echo' or cmd.href=='/revival/social/join' or
       cmd.href=='/revival/social/register/submit' or cmd.href=='/revival/social/login/submit' or
-      cmd.href:match('^/revival/social/send/[1-9]%d*$') then
+      cmd.href:match('^/revival/social/send/[1-9]%d*$') or
+      cmd.href=='/revival/social/contact/request' or
+      cmd.href:match('^/revival/social/contact/(%a+)/') or
+      cmd.href:match('^/revival/social/account/send/[a-z][a-z0-9_]*$') then
       for _,candidate in ipairs(form.items) do
         if candidate.kind=='button' and candidate.href==cmd.href then button=candidate;break end
       end

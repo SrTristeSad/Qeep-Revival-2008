@@ -11,12 +11,14 @@ local function fail(job, reason)
   return {ok=false,error=tostring(reason)}
 end
 function M.start(socklib, codec, host, port, token, peer, revision)
-  if type(peer)~='string' or not peer:match('^[1-9]%d*$') or #peer>10 then return nil,'Invalid peer' end
+  local guest=type(peer)=='string' and peer:match('^[1-9]%d*$') and #peer<=10
+  local account=type(peer)=='string' and peer:match('^[a-z][a-z0-9_]*$') and #peer>=3 and #peer<=24
+  if not guest and not account then return nil,'Invalid peer' end
   if type(token)~='string' or token=='' or #token>128 then return nil,'Missing guest session' end
   local conn,err=socklib.tcp()
   if not conn then return nil,err end
   conn:settimeout(0)
-  local path='/revival/social/poll/'..peer
+  local path=(account and '/revival/social/account/poll/' or '/revival/social/poll/')..peer
   local ok,request=pcall(codec.encodeRequest,'O',path,{session=token,since=tostring(revision or 0)},'')
   if not ok then conn:close();return nil,request end
   local connected,why=conn:connect(host,port)

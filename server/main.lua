@@ -8,6 +8,10 @@ local account_store = require('account_store')
 local db,dbErr=account_store.new('server/data/accounts.db')
 assert(db, 'Account storage unavailable: '..tostring(dbErr))
 social.configure_accounts(db)
+local social_store=require('social_store')
+local durable,socialErr=social_store.new('server/data/social.db')
+assert(durable,'Social storage unavailable: '..tostring(socialErr))
+social.configure_social(durable)
 local ok, socket = pcall(require, 'socket')
 if not ok then
   io.stderr:write('LuaSocket missing. Install: luarocks install luasocket\n')
@@ -28,7 +32,7 @@ local function route(req)
 end
 local loop=tcp_loop.new(listener,socket,protocol,route)
 print(('Qeep Revival 2008 diagnostic server on %s:%d'):format(host, port))
-print('Local laboratory only: persistent access-code accounts; ephemeral messages; NO TLS.')
+print('Local laboratory only: persistent access-code accounts; registered contacts and messages persisted; guest messages ephemeral; NO TLS.')
 if host ~= '127.0.0.1' and host ~= 'localhost' then
   io.stderr:write('WARNING: access codes cross TCP in plaintext. DO NOT expose this service to untrusted networks.\n')
 end
