@@ -1,6 +1,7 @@
 -- Event-level mock checks for the optional *evidence* view, not GPU screenshots.
 package.path='client/?.lua;client/lib/?.lua;'..package.path
 local draws, labels={},{}
+local captured = nil
 local function noop() end
 local font={getHeight=function() return 12 end}
 function font:getWrap(s,w)
@@ -22,6 +23,7 @@ local function image(path)
 end
 love={graphics={setColor=noop,rectangle=noop,setFont=noop,setScissor=noop,
  setDefaultFilter=noop,push=noop,pop=noop,translate=noop,scale=noop,
+ captureScreenshot=function(name) captured=name end,
  getDimensions=function() return 480,640 end,newFont=function() return font end,
  printf=function(s) labels[#labels+1]=tostring(s) end,
  newImage=image,newQuad=function() return {} end,
@@ -36,6 +38,8 @@ local function has(part)
  return false
 end
 love.load()
+love.keypressed('f12')
+assert(type(captured)=='string' and captured:match('^qeep_capture_.*%.png$'))
 -- The eighth menu item is the graphical-reference view; the exit item remains last.
 for _=1,7 do love.keypressed('down') end
 love.keypressed('return')

@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 15 — comparação visual dos recursos originais (laboratório)
+## Estado atual: fase 16 — protocolo de captura e comparação visual sem redes externas
+
+- **Fase 16:** ferramenta de pré-verificação e execução isolada do JAR Java ME, comparação de capturas PNG e captura local do cliente LÖVE via tecla `F12`. **Ainda não foi obtida captura autenticada do emulador**; não existe equivalência visual 1:1 comprovada. Leia [procedimento seguro e reprodutível](docs/fidelidade-capturas-fase16.md).
 
 - **Fase 15:** menu **Recursos originais (JAR)** para comparação de logotipo, ícone, atlas e cores verificadas do JAR 1.29; janela com zoom de pixels inteiros e área de toque ajustada. Não é uma reprodução de tela histórica. [Evidências e limites](docs/fidelidade-visual-fase15.md).
 
@@ -81,7 +83,7 @@ docs/                     Documentação e evidências (fases 1–15)
 
 ## Próximos marcos
 
-1. **Em andamento:** validar o renderizador JCL com capturas reais do JAR em emulador e mapear o restante do estilo/foco de `j`, `aa`, `ac`. O subconjunto de `h` incluído na fase 3 ainda não comprova a aparência histórica.
+1. **Em andamento:** obter capturas reais autenticadas do JAR em emulador (infraestrutura de comparação preparada na Fase 16), depois validar o renderizador JCL e mapear o restante do estilo/foco de `j`, `aa`, `ac`. O subconjunto de `h` incluído na fase 3 ainda não comprova a aparência histórica.
 2. Substituir as telas sintéticas por telas reproduzidas a partir de referências verificáveis.
 3. Evoluir do laboratório de formulários sintéticos (Fase 4) para fluxos comprovados no JAR; construir serviços reais somente após mapear o funcionamento de cada recurso.
 4. Empacotar e testar versões Windows e Android, preservando a mesma base Lua.
@@ -114,3 +116,7 @@ Usuários cadastrados podem enviar convites, aprovar ou recusar contatos e conve
 ### Fase 15 — laboratório de fidelidade visual
 
 O menu **Recursos originais (JAR)** reúne cores e imagens verificadas da versão 1.29, sem atribuir à tela sintética a condição de imagem histórica. O canvas de 240×320 prioriza escala inteira para manter pixels nítidos. [Evidências, hashes e limites](docs/fidelidade-visual-fase15.md).
+
+### Fase 16 — capturas e comparações de evidências
+
+`python3 tools/j2me_preflight.py qeep-94724.jar` identifica o JAR sem executar o programa; `--run-isolated` só executa com isolamento Linux de rede comprovado. O cliente LÖVE salva uma captura local com `F12`, e `tools/compare_visual.py` compara capturas explicitamente fornecidas, com máscaras, escalas inteiras e relatório de diferenças. Não foram obtidas telas reais do Qeep no emulador nesta fase. Veja [procedimento e limitações](docs/fidelidade-capturas-fase16.md).

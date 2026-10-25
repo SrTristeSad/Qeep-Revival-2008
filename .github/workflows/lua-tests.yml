@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Lua
-        run: sudo apt-get update && sudo apt-get install -y lua5.4 lua-socket
+        run: sudo apt-get update && sudo apt-get install -y lua5.4 lua-socket python3-pil
       - name: Check bytecode compatibility and protocol fixtures
         run: |
           lua5.4 tests/test_protocol.lua
@@ -43,8 +43,10 @@ jobs:
           lua5.4 tests/test_legacy_viewport.lua
           lua5.4 tests/test_legacy_reference.lua
           lua5.4 tests/test_client_reference.lua
+          lua5.4 tests/test_visual_capture.lua
+          python3 tests/test_visual_tools.py
           python3 tests/test_import_jar_assets.py
-          python3 -m py_compile tools/audit_visual_jar.py
+          python3 -m py_compile tools/audit_visual_jar.py tools/j2me_preflight.py tools/compare_visual.py
           find client server tests -name "*.lua" -print0 | xargs -0 -n1 luac5.4 -p
       - name: Test real TCP localhost roundtrip
         run: |

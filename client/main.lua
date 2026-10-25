@@ -14,6 +14,7 @@ local symbols = require('lib.legacy_symbols')
 local jcl_screen = require('lib.jcl_screen')
 local viewport = require('lib.legacy_viewport')
 local visual_reference = require('lib.legacy_reference')
+local visual_capture = require('lib.visual_capture')
 local social_poll = require('lib.social_poll')
 local social_send = require('lib.social_send')
 local c = legacy.colors
@@ -544,6 +545,13 @@ function love.draw()
   love.graphics.pop()
 end
 function love.keypressed(key)
+  -- F12 is an explicit, local screenshot. It captures the actual LOVE window
+  -- (including letterboxing); use --crop-candidate/--scale-candidate in QA.
+  if key=='f12' then
+    local filename = visual_capture.take(love.graphics)
+    if filename then print('Qeep screenshot: '..filename..' (LOVE save directory)') end
+    return
+  end
   if sendJob then return end -- prevent double submit or navigation during in-flight send
   -- Optional J2ME-like numeric keyboard controls; no 1:1 keypad mapping claimed.
   if view=='jcl' or view=='menu' then
