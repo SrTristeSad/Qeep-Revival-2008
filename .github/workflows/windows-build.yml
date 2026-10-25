@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Unit-test the standalone packager
-        run: python3 -m unittest discover -s tests -p 'test_package_windows.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_package_windows.py' -v
+          python3 -m unittest discover -s tests -p 'test_verify_windows_bundle.py' -v
       - name: Download official LÖVE Windows x64 11.5 distribution
         run: |
           curl --fail --location --retry 3 --retry-delay 2 \
@@ -27,6 +29,8 @@ jobs:
             --client client --runtime-zip "$RUNNER_TEMP/love-11.5-win64.zip" \
             --output-zip dist/Qeep-Revival-2008-Windows-x64.zip \
             --output-love dist/Qeep-Revival-2008.love
+      - name: Validate Windows PE architecture, dependencies and embedded Lua
+        run: python3 tools/verify_windows_bundle.py dist/Qeep-Revival-2008-Windows-x64.zip
       - name: Validate generated packages
         run: |
           python3 - <<'PY'

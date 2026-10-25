@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 20 — empacotador Windows x64 verificável e cliente LÖVE para Android (sem APK)
+## Estado atual: fase 21 — auditoria do pacote Windows e pipeline de APK Android de depuração
 
 - **Fase 20:** workflow automatizado para gerar ZIP com EXE Windows x64 e DLLs do LÖVE 11.5, validando o runtime por SHA-256. O mesmo workflow gera `.love` utilizável no LÖVE Loader Android. A execução gráfica Windows e Android **ainda depende de testes em dispositivo**. Veja [distribuição da Fase 20](docs/empacotamento-fase20.md).
 
@@ -134,3 +134,8 @@ O menu **Recursos originais (JAR)** reúne cores e imagens verificadas da versã
 ### Fase 20 — distribuição Windows e Android Loader
 
 O workflow `windows-build.yml` gera um ZIP Windows x64 contendo `.exe` e DLLs do runtime verificado, e um `.love` importável no LÖVE Loader para Android (não é APK). Os pacotes públicos omitem os PNGs históricos e o servidor, que permanece separado. Veja [`docs/empacotamento-fase20.md`](docs/empacotamento-fase20.md).
+
+
+### Fase 21 — APK Android independente para teste
+
+O workflow `android-build.yml` prepara o código Lua com o upstream oficial LÖVE Android 11.5a e tenta gerar um **APK de depuração embutido**, sem exigir LÖVE Loader no aparelho. O teste do pacote Windows verifica a integridade da distribuição, mas não inicia a interface gráfica no Windows. O APK Android requer validação manual no dispositivo; dados e conexões continuam experimentais e restritos à rede local. Veja [docs/distribuicao-fase21.md](docs/distribuicao-fase21.md).
