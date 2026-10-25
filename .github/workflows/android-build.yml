@@ -34,11 +34,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK components
-        uses: android-actions/setup-android@v3
-      - name: Install pinned Android NDK and SDK 34
+      - name: Install pinned Android SDK 34 and NDK with preinstalled sdkmanager
         run: |
-          sdkmanager --install 'platforms;android-34' 'build-tools;34.0.0' 'ndk;25.2.9519653' 'cmake;3.22.1'
+          SDKROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDKROOT" >> "$GITHUB_ENV"
+          "$SDKROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDKROOT" --install \
+            'platforms;android-34' 'build-tools;34.0.0' 'ndk;25.2.9519653' 'cmake;3.22.1'
       - name: Test Android package preparation
         run: python3 -m unittest discover -s tests -p 'test_package_android.py' -v
       - name: Embed the Lua client (no original JAR assets)
