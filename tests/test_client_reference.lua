@@ -47,6 +47,16 @@ love.draw()
 assert(has('Recursos do JAR 1.29'))
 assert(has('Back  |  Select  |  Options'))
 assert(has('s0 bg') and has('s11 tc'))
+labels={}
+love.keypressed('tab')
+love.draw()
+assert(has('Estilos do registry.ini'))
+assert(has('s11  64,ebffb9,0,a0b419,200,a0b419'))
+assert(has('11 registros sN'))
+labels={}
+love.keypressed('tab')
+love.draw()
+assert(has('Cores extraidas de registry.ini'))
 assert(#draws>=6,'logo + icon + 4 verified symbol-frame draws')
 labels={}
 love.keypressed('escape')

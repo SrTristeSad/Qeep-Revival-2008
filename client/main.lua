@@ -14,6 +14,7 @@ local symbols = require('lib.legacy_symbols')
 local jcl_screen = require('lib.jcl_screen')
 local viewport = require('lib.legacy_viewport')
 local visual_reference = require('lib.legacy_reference')
+local registry_tokens = require('lib.registry_tokens')
 local visual_capture = require('lib.visual_capture')
 local social_poll = require('lib.social_poll')
 local social_send = require('lib.social_send')
@@ -36,6 +37,7 @@ local guestSession = nil -- ephemeral; never persisted
 local pollJob, pollPending, pollElapsed, pollHint = nil,nil,0,''
 local sendJob, sendHint = nil,''
 local originalLogo = nil
+local visualMode = 1 -- 1=original assets, 2=raw registry style tokens
 local imageCache = {}
 local function paint(color) love.graphics.setColor(color) end
 local function rect(mode,x,y,w,h) love.graphics.rectangle(mode,x,y,w,h) end
@@ -171,7 +173,7 @@ local function activateMenu()
   elseif selected==7 then
     local source,err=socketRequest('/revival/social/start')
     if source then openJCL(source,false,true) else showError('Servidor social indisponivel: '..tostring(err)) end
-  elseif selected==8 then view='visual'
+  elseif selected==8 then view='visual';visualMode=1
   elseif selected==9 then love.event.quit() end
 end
 local function navigate(href, activated)
@@ -489,8 +491,33 @@ local function drawReference()
     end
   else text('kui/symbols.png nao importado',10,241,220) end
   text('Back  |  Select  |  Options',8,266,224,'center')
+  text('Tab: mostrar os estilos originais',7,281,226,'center')
   paint(c.purple);rect('fill',0,H-25,W,25)
   text('Voltar: Esc',8,H-19,224,'center',false,c.white)
+end
+-- Raw style-token inspector, not a reproduction of a delivered Qeep screen.
+local function drawRegistryTokens()
+  text('Estilos do registry.ini',8,32,224,'center',true)
+  text('11 registros sN presentes no JAR',8,51,224,'center')
+  paint(c.olive);rect('fill',10,70,220,1)
+  for i,style in ipairs(registry_tokens.styles) do
+    local y=78+(i-1)*18
+    local bg=registry_tokens.solid(style.fields.bg) or registry_tokens.solid(style.fields.cbg)
+    if bg then
+      paint(bg)
+      rect('fill',13,y,37,15)
+    else
+      paint(c.white);rect('line',13,y,37,15)
+    end
+    paint(c.purple);rect('line',13,y,37,15)
+    local info=style.fields.bg or style.fields.cbg or '(sem fundo)'
+    local label=style.id..'  '..info
+    text(label,58,y+2,170)
+  end
+  text('s11 = gradiente codificado (64),',9,278,222)
+  text('nao e cor plana nem tela real.',9,287,222)
+  paint(c.purple);rect('fill',0,H-25,W,25)
+  text('Tab: recursos   Esc: voltar',6,H-19,W-12,'center',false,c.white)
 end
 function love.draw()
   local scale,ox,oy=transform()
@@ -504,7 +531,7 @@ function love.draw()
   if view=='jcl' and document then
     drawJCL()
   elseif view=='visual' then
-    drawReference()
+    if visualMode==1 then drawReference() else drawRegistryTokens() end
   else
     if view=='menu' and originalLogo and love.graphics.draw then
       paint(c.white)
@@ -589,6 +616,8 @@ function love.keypressed(key)
     elseif key=='down' then selected=selected%#options+1
     elseif key=='return' or key=='kpenter' or key=='space' then activateMenu()
     elseif key=='escape' then love.event.quit() end
+  elseif view=='visual' and (key=='tab' or key=='right' or key=='left') then
+    visualMode=(visualMode==1 and 2 or 1)
   elseif view=='host' then
     if key=='return' or key=='kpenter' then
       serverHost=serverHost:gsub('%s+','')
@@ -640,6 +669,8 @@ local function pointer(x,y)
         refreshLayout(true)
       end
     end
+  elseif view=='visual' and py>=H-25 then returnMenu()
+  elseif view=='visual' and py>=255 then visualMode=(visualMode==1 and 2 or 1)
   elseif py>=H-34 then returnMenu() end
 end
 function love.mousepressed(x,y,button,istouch)

@@ -1,0 +1,113 @@
+{
+  "source": "registry.ini within user-provided qeep-94724.jar",
+  "source_sha256": "fd24b6191fbef801f3b7791def8c9c13e30485c9152fe073799f46c383e5e6b3",
+  "scope": "Only sN style tokens, not historical screens; raw encoder values retained",
+  "styles": [
+    {
+      "id": "s0",
+      "fields": {
+        "bg": "32,ebffb9",
+        "xc": "7d147d",
+        "lf": "8",
+        "tf": "8"
+      }
+    },
+    {
+      "id": "s1",
+      "fields": {
+        "bg": "32,ebffb9",
+        "cbg": "32,ebffb9",
+        "xc": "7d147d",
+        "tf": "8",
+        "tc": "000000",
+        "lc": "000000"
+      }
+    },
+    {
+      "id": "s2",
+      "fields": {
+        "bg": "32,cdff3c",
+        "cbg": "32,cdff3c",
+        "tc": "000000",
+        "lc": "000000",
+        "lf": "8",
+        "tf": "8"
+      }
+    },
+    {
+      "id": "s4",
+      "fields": {
+        "bg": "32,ebffb9",
+        "cbg": "32,ebffb9",
+        "xc": "7d147d",
+        "lf": "9",
+        "tf": "8",
+        "tc": "000000",
+        "lc": "000000"
+      }
+    },
+    {
+      "id": "s5",
+      "fields": {
+        "bg": "32,cdff3c",
+        "cbg": "32,ebffb9",
+        "tc": "000000",
+        "lc": "000000",
+        "tf": "8",
+        "lf": "9"
+      }
+    },
+    {
+      "id": "s7",
+      "fields": {
+        "lf": "9",
+        "cbg": "32,a0b419",
+        "cfr": "5,0,1,a0b419",
+        "tc": "000000",
+        "tf": "8"
+      }
+    },
+    {
+      "id": "s8",
+      "fields": {
+        "lf": "9",
+        "cbg": "32,cdff3c",
+        "cfr": "5,0,1,a0b419",
+        "tc": "000000",
+        "tf": "8"
+      }
+    },
+    {
+      "id": "s10",
+      "fields": {
+        "bg": "32,a1b617",
+        "tc": "501e50",
+        "tf": "9"
+      }
+    },
+    {
+      "id": "s11",
+      "fields": {
+        "bg": "64,ebffb9,0,a0b419,200,a0b419",
+        "tc": "3c143c",
+        "tf": "9"
+      }
+    },
+    {
+      "id": "s12",
+      "fields": {
+        "bg": "32,cdff3c",
+        "fr": "1,1,1,7d147d",
+        "tf": "8"
+      }
+    },
+    {
+      "id": "s13",
+      "fields": {
+        "bg": "32,a0b419",
+        "fr": "1,1,1,7d147d",
+        "tf": "9"
+      }
+    }
+  ]
+}
