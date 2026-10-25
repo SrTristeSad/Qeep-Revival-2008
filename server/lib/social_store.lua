@@ -4,7 +4,8 @@
 local accounts=require('account_store')
 local utf8edit=require('utf8_edit')
 local M={}
-local HEADER='QEEP_REVIVAL_SOCIAL_1\n'
+local HEADER='QEEP_REVIVAL_SOCIAL_2\n'
+local LEGACY_HEADER='QEEP_REVIVAL_SOCIAL_1\n'
 local MAX_MESSAGES,MAX_CONTACTS,MAX_REQUESTS,MAX_BYTES=1500,100,100,4194304
 local function pair(a,b)
   if a>b then a,b=b,a end
@@ -21,9 +22,10 @@ local function unhex(s)
   return (s:gsub('..',function(c) return string.char(tonumber(c,16)) end))
 end
 local function clone(db)
-  local copy={requests={},contacts={},messages={},sequence=db.sequence}
+  local copy={requests={},contacts={},messages={},read={},sequence=db.sequence}
   for k,v in pairs(db.requests) do copy.requests[k]=v end
   for k,v in pairs(db.contacts) do copy.contacts[k]=v end
+  for k,v in pairs(db.read) do copy.read[k]=v end
   for i,v in ipairs(db.messages) do copy.messages[i]=v end
   return copy
 end
@@ -46,6 +48,14 @@ local function serialize(db)
   for _,v in ipairs(db.messages) do
     rows[#rows+1]=table.concat({'M',v.seq,v.from,v.to,hex(v.text)},'\t')
   end
+  -- Read cursors are per viewer and peer; no message contents are duplicated.
+  local keys={}
+  for key in pairs(db.read) do keys[#keys+1]=key end
+  table.sort(keys)
+  for _,key in ipairs(keys) do
+    local viewer,peer=key:match('^([^\0]+)\0([^\0]+)$')
+    rows[#rows+1]=table.concat({'L',viewer,peer,db.read[key]},'\t')
+  end
   return table.concat(rows,'\n')..'\n'
 end
 local function save(db,state)
@@ -59,7 +69,7 @@ local function save(db,state)
   if not wrote or not closed then os.remove(temp);return nil,'Erro ao gravar: '..tostring(writeErr or closeErr) end
   local moved,renameErr=os.rename(temp,db.path)
   if not moved then os.remove(temp);return nil,'Erro ao salvar dados: '..tostring(renameErr) end
-  db.contacts,db.requests,db.messages,db.sequence=state.contacts,state.requests,state.messages,state.sequence
+  db.contacts,db.requests,db.messages,db.read,db.sequence=state.contacts,state.requests,state.messages,state.read,state.sequence
   return true
 end
 local function parse(path)
@@ -68,14 +78,19 @@ local function parse(path)
     local probe=io.open(path..'.tmp','wb')
     if not probe then return nil,'Pasta social ausente ou não gravável' end
     probe:close();os.remove(path..'.tmp')
-    return {contacts={},requests={},messages={},sequence=0}
+    return {contacts={},requests={},messages={},read={},sequence=0}
   end
   local raw=f:read(MAX_BYTES+1);local more=f:read(1);f:close()
-  if not raw or more or #raw>MAX_BYTES or raw:sub(1,#HEADER)~=HEADER or raw:sub(-1)~='\n' then
+  if not raw or more or #raw>MAX_BYTES or raw:sub(-1)~='\n' then
     return nil,'Arquivo social inválido ou grande demais'
   end
-  local db={contacts={},requests={},messages={},sequence=0}
-  for line in raw:sub(#HEADER+1):gmatch('([^\n]+)\n') do
+  local header
+  if raw:sub(1,#HEADER)==HEADER then header=HEADER
+  elseif raw:sub(1,#LEGACY_HEADER)==LEGACY_HEADER then header=LEGACY_HEADER
+  else return nil,'Versão social desconhecida' end
+  local db={contacts={},requests={},messages={},read={},sequence=0}
+  local readRows={}
+  for line in raw:sub(#header+1):gmatch('([^\n]+)\n') do
     local kind=line:sub(1,1)
     if kind=='R' or kind=='C' then
       local a,b=line:match('^[RC]\t([a-z][a-z0-9_]*)\t([a-z][a-z0-9_]*)$')
@@ -98,7 +113,20 @@ local function parse(path)
         not valid_message(body) or #db.messages>=MAX_MESSAGES then return nil,'Mensagem social inválida' end
       db.messages[#db.messages+1]={seq=number,from=from,to=to,text=body}
       db.sequence=number
+    elseif kind=='L' and header==HEADER then
+      local viewer,peer,seq=line:match('^L\t([a-z][a-z0-9_]*)\t([a-z][a-z0-9_]*)\t(%d+)$')
+      local number=tonumber(seq or '')
+      if not accounts.allowed(viewer) or not accounts.allowed(peer) or viewer==peer or
+          not number or number<1 or number>9007199254740991 then return nil,'Marcador de leitura inválido' end
+      local key=viewer..'\0'..peer
+      if readRows[key] then return nil,'Marcador de leitura duplicado' end
+      readRows[key]=number
     else return nil,'Registro social desconhecido' end
+  end
+  for key,number in pairs(readRows) do
+    local viewer,peer=key:match('^([^\0]+)\0([^\0]+)$')
+    if number>db.sequence or not db.contacts[pair(viewer,peer)] then return nil,'Marcador de leitura sem contato' end
+    db.read[key]=number
   end
   -- Reject persisted states that exceed runtime quotas or violate link invariants.
   for k in pairs(db.contacts) do
@@ -167,6 +195,40 @@ function M.send(db,from,to,message)
   local ok,err=save(db,state)
   if not ok then return nil,err end
   return state.sequence
+end
+-- A thread is marked read only when the authenticated viewer opens/receives it.
+-- This cursor survives server restart and never counts the viewer's own messages.
+function M.mark_read(db,viewer,peer)
+  if not M.is_contact(db,viewer,peer) then return nil,'Contato não aprovado' end
+  local newest=db.read[viewer..'\0'..peer] or 0
+  for _,message in ipairs(db.messages) do
+    if message.from==peer and message.to==viewer and message.seq>newest then newest=message.seq end
+  end
+  if newest==(db.read[viewer..'\0'..peer] or 0) then return true end
+  local state=clone(db);state.read[viewer..'\0'..peer]=newest
+  return save(db,state)
+end
+function M.summaries(db,username)
+  local contacts=M.list(db,username)
+  local summaries={}
+  for _,peer in ipairs(contacts) do
+    local cursor=db.read[username..'\0'..peer] or 0
+    local row={name=peer,unread=0,last_seq=0}
+    for _,message in ipairs(db.messages) do
+      if (message.from==username and message.to==peer) or (message.from==peer and message.to==username) then
+        row.last_seq=message.seq
+        if message.from==peer and message.to==username and message.seq>cursor then
+          row.unread=row.unread+1
+        end
+      end
+    end
+    summaries[#summaries+1]=row
+  end
+  table.sort(summaries,function(a,b)
+    if a.last_seq~=b.last_seq then return a.last_seq>b.last_seq end
+    return a.name<b.name
+  end)
+  return summaries
 end
 function M.thread(db,a,b)
   if not M.is_contact(db,a,b) then return nil,'Contato não aprovado' end

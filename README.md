@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 13 — contatos e mensagens persistentes entre contas (protótipo)
+## Estado atual: fase 14 — organização de conversas e mensagens não lidas (protótipo)
+
+- **Fase 14:** contatos ordenados pela atividade recente e contadores de mensagens não lidas persistidos por usuário/conversa, com leitura registrada ao abrir chat e migração automática do banco social `_1` para `_2`. [Detalhes](docs/mensagens-nao-lidas-fase14.md).
 
 - **Fase 13:** contatos vinculados a contas: convite, aceite/recusa, chat direto com histórico local salvo em `server/data/social.db` e polling de novas mensagens. Visitantes continuam com mensagens temporárias. O contato deve aprovar a solicitação antes que o chat seja liberado. Dados em texto simples no disco; teste somente em máquina/rede privada, sem TLS. Veja [Fase 13](docs/contatos-fase13.md).
 - **Fase 12:** contas persistentes locais, entrada por código aleatório de 192 bits, login/logout e visitantes preservados. O servidor grava `server/data/accounts.db` (ignorado pelo Git). Não há TLS nem recuperação de código; somente laboratório privado Linux/POSIX. Veja [documentação da Fase 12](docs/contas-fase12.md).

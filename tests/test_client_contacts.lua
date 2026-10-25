@@ -78,7 +78,7 @@ local clicked=false
 for _=1,15 do
   love.keypressed('return')
   if calls[#calls].path=='/revival/social/account/chat/beatriz' then clicked=true;break end
-  if shown('Conversa') then error('unexpected conversation') end
+  if shown('Conversa — laboratório') then error('unexpected conversation') end
   love.keypressed('escape')
   love.keypressed('down')
 end

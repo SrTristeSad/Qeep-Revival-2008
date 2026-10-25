@@ -65,12 +65,16 @@ local function welcome()
     '<lsk label="Voltar" href="/revival/page/lab"/>')
 end
 local function home(person)
+  local unread=0
+  if person.account and socialStore then
+    for _,row in ipairs(socialLib.summaries(socialStore,person.account)) do unread=unread+row.unread end
+  end
   return xml('Sala social — laboratório','home',
     '<p label="Olá, '..escape(person.name)..'. '..(person.account and 'Conta local persistente.' or 'Você é visitante temporário.')..'"/>'..
     '<a label="Pessoas conectadas" href="/revival/social/people" focused="true"/>'..
-    (person.account and '<a label="Meus contatos e mensagens salvas" href="/revival/social/contacts"/>' or '')..
+    (person.account and '<a label="Meus contatos e mensagens salvas ('..unread..' não lidas)" href="/revival/social/contacts"/>' or '')..
     '<a label="Atualizar sala" href="/revival/social/home"/>'..
-    '<p label="Mensagens não são salvas em disco. Não compartilhe dados pessoais."/>'..
+    (person.account and '<p label="Mensagens da conta ficam no disco local, sem criptografia."/>' or '<p label="Mensagens de visitantes não são salvas em disco."/>')..
     '<a label="Encerrar sessão" href="/revival/social/logout"/>'..
     '<lsk label="Menu de testes" href="/revival/page/lab"/>',person.token)
 end
@@ -123,15 +127,20 @@ end
 -- Durable account features use account usernames, not per-process visitor IDs.
 local function contacts_page(person)
   local contacts,pending,sent=socialLib.list(socialStore,person.account)
+  local summaries=socialLib.summaries(socialStore,person.account)
+  local unreadTotal=0
+  for _,row in ipairs(summaries) do unreadTotal=unreadTotal+row.unread end
   local parts={
     '<p label="Contatos persistentes (função nova do Revival, não Qeep original)."/>',
     '<p label="Os pedidos precisam ser aprovados para habilitar mensagens."/>',
     '<input id="contact" label="Nome de usuário para convidar" len="24"/>',
     '<button id="request" label="Enviar solicitação" href="/revival/social/contact/request"/>'
   }
-  parts[#parts+1]='<p label="Contatos aprovados:"/>'
-  for _,name in ipairs(contacts) do
-    parts[#parts+1]='<a label="'..escape(name)..'" href="/revival/social/account/chat/'..name..'"/>'
+  parts[#parts+1]='<p label="Conversas (não lidas: '..unreadTotal..'):"/>'
+  for _,row in ipairs(summaries) do
+    local label=row.name
+    if row.unread>0 then label=label..' ('..row.unread..' não lidas)' end
+    parts[#parts+1]='<a label="'..escape(label)..'" href="/revival/social/account/chat/'..row.name..'"/>'
   end
   if #contacts==0 then parts[#parts+1]='<p label="Nenhum contato aprovado."/>' end
   parts[#parts+1]='<p label="Solicitações recebidas:"/>'
@@ -149,6 +158,8 @@ end
 local function stored_chat_page(person,username)
   local messages,revision=socialLib.thread(socialStore,person.account,username)
   if not messages then return nil,revision end
+  local readOk,readErr=socialLib.mark_read(socialStore,person.account,username)
+  if not readOk then return nil,readErr end
   local parts={'<p label="Chat persistente com '..escape(username)..' (Revival experimental)."/>'}
   for _,m in ipairs(messages) do
     parts[#parts+1]='<p label="'..escape((m.from==person.account and 'Você' or username)..': '..m.text)..'"/>'
@@ -201,7 +212,9 @@ local function account_route(person,req)
     local _,revision=socialLib.thread(socialStore,person.account,peer)
     if not revision then return reply_error('Contato não aprovado') end
     if tonumber(props.since)==revision then return {ok=true,unchanged=true,payload=''} end
-    return {ok=true,payload=assert(stored_chat_page(person,peer))}
+    local page,err=stored_chat_page(person,peer)
+    if not page then return reply_error(err) end
+    return {ok=true,payload=page}
   elseif kind=='send' and req.kind=='P' then
     if not allowed(props,{message=true,submitId=true,lang=true,session=true}) or props.submitId~='send' then
       return reply_error('Campos de envio inválidos')
@@ -209,7 +222,9 @@ local function account_route(person,req)
     local msg=type(props.message)=='string' and trim(props.message) or ''
     local seq,err=socialLib.send(socialStore,person.account,peer,msg)
     if not seq then return reply_error(err) end
-    return {ok=true,payload=assert(stored_chat_page(person,peer))}
+    local page,err=stored_chat_page(person,peer)
+    if not page then return reply_error(err) end
+    return {ok=true,payload=page}
   end
   return reply_error('Ação de conta não permitida')
 end
