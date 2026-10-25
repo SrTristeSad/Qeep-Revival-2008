@@ -34,6 +34,7 @@ local options = {
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touchGesture = mobile_touch.new()
+local MOBILE_FIT = {fractional=true}
 local appFocused = true -- Android may suspend the activity while a chat is open
 local history = jcl_history.new(16)
 local previousView = 'menu'
@@ -52,12 +53,12 @@ local function text(s,x,y,width,align,useBig,color)
 end
 local function transform()
   local dw,dh=love.graphics.getDimensions()
-  local t=viewport.fit(dw,dh,W,H)
+  local t=viewport.fit(dw,dh,W,H,isMobile and MOBILE_FIT or nil)
   return t.scale,t.x,t.y
 end
 local function localPoint(x,y)
   local dw,dh=love.graphics.getDimensions()
-  return viewport.fromWindow(viewport.fit(dw,dh,W,H),x,y)
+  return viewport.fromWindow(viewport.fit(dw,dh,W,H,isMobile and MOBILE_FIT or nil),x,y)
 end
 -- Tell the mobile IME where the active field sits inside the scaled canvas.
 local function setKeyboard(enabled, host)
@@ -530,9 +531,9 @@ local function drawReference()
     end
   else text('kui/symbols.png nao importado',10,241,220) end
   text('Back  |  Select  |  Options',8,266,224,'center')
-  text('Tab: mostrar os estilos originais',7,281,226,'center')
+  text(isMobile and 'Toque abaixo: estilos' or 'Tab: mostrar os estilos originais',7,281,226,'center')
   paint(c.purple);rect('fill',0,H-25,W,25)
-  text('Voltar: Esc',8,H-19,224,'center',false,c.white)
+  text(isMobile and 'Voltar' or 'Voltar: Esc',8,H-19,224,'center',false,c.white)
 end
 -- Raw style-token inspector, not a reproduction of a delivered Qeep screen.
 local function drawRegistryTokens()
@@ -556,7 +557,7 @@ local function drawRegistryTokens()
   text('s11 = gradiente codificado (64),',9,278,222)
   text('nao e cor plana nem tela real.',9,287,222)
   paint(c.purple);rect('fill',0,H-25,W,25)
-  text('Tab: recursos   Esc: voltar',6,H-19,W-12,'center',false,c.white)
+  text(isMobile and 'Toque: recursos / voltar' or 'Tab: recursos   Esc: voltar',6,H-19,W-12,'center',false,c.white)
 end
 function love.draw()
   local scale,ox,oy=transform()
@@ -601,18 +602,30 @@ function love.draw()
       if #visible>25 then visible='...'..visible:sub(-22) end
       text(visible..'_',18,146,206)
       text(endpointHint~='' and endpointHint or
-        'Ex.: 192.168.1.50:5190\nIP do computador, nao do celular.\nEnter: salvar  Esc: cancelar',12,184,216)
+        (isMobile and 'Ex.: 192.168.1.50:5190\nIP do computador, nao do celular.\nToque abaixo: Salvar / Cancelar' or 'Ex.: 192.168.1.50:5190\nIP do computador, nao do celular.\nEnter: salvar  Esc: cancelar'),12,184,216)
     elseif view=='status' then
       text('Resultado',13,106,214,'center',true)
       text(status,14,153,212)
-      text('Enter / Esc para voltar',12,274,216,'center')
+      text(isMobile and 'Toque em Voltar' or 'Enter / Esc para voltar',12,274,216,'center')
     elseif view=='about' then
       text('Reconstrucao independente de um cliente Java ME de 2008.',14,105,212)
       text('O JCL e parcial. A demonstracao e sintetica.',14,167,212)
       text('Enter / Esc para voltar',12,274,216,'center')
     end
     paint(c.purple);rect('fill',0,H-25,W,25)
-    text(view=='menu' and 'Selecionar: Enter   Voltar: Esc' or 'Voltar: Esc',6,H-19,W-12,'center',false,c.white)
+    if isMobile then
+      if view=='menu' then
+        text('Abrir',8,H-19,106,'left',false,c.white)
+        text('Sair',125,H-19,106,'right',false,c.white)
+      elseif view=='host' then
+        text('Salvar',8,H-19,106,'left',false,c.white)
+        text('Cancelar',125,H-19,106,'right',false,c.white)
+      else
+        text('Voltar',8,H-19,W-16,'center',false,c.white)
+      end
+    else
+      text(view=='menu' and 'Selecionar: Enter   Voltar: Esc' or 'Voltar: Esc',6,H-19,W-12,'center',false,c.white)
+    end
   end
   love.graphics.pop()
 end
@@ -690,6 +703,10 @@ local function pointer(x,y)
   local px,py=localPoint(x,y)
   if not px then return end
   if view=='menu' then
+    if isMobile and py>=H-25 then
+      if px<W/2 then activateMenu() else love.event.quit() end
+      return
+    end
     for i=1,#options do
       local y=MENU_Y+(i-1)*MENU_ROW
       if py>=y and py<y+MENU_ROW then selected=i;activateMenu();break end
@@ -713,11 +730,16 @@ local function pointer(x,y)
         refreshLayout(true)
       end
     end
-  elseif view=='host' and py>=118 and py<190 then
-    setKeyboard(true,true)
+  elseif view=='host' then
+    if isMobile and py>=H-25 then
+      if px<W/2 then love.keypressed('return') else love.keypressed('escape') end
+    elseif py>=118 and py<190 then setKeyboard(true,true)
+    elseif py>=H-34 then returnMenu() end
   elseif view=='visual' and py>=H-25 then returnMenu()
   elseif view=='visual' and py>=255 then visualMode=(visualMode==1 and 2 or 1)
-  elseif py>=H-34 then returnMenu() end
+  elseif py>=H-34 then
+    if view=='status' then dismissStatus() else returnMenu() end
+  end
 end
 function love.mousepressed(x,y,button,istouch)
   if button~=1 or istouch then return end

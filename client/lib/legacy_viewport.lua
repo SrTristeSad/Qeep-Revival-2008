@@ -5,12 +5,15 @@ local M = {}
 local function finite_positive(v)
   return type(v)=='number' and v>0 and v<math.huge and v==v
 end
-function M.fit(width, height, logicalWidth, logicalHeight)
+function M.fit(width, height, logicalWidth, logicalHeight, options)
   assert(finite_positive(width) and finite_positive(height), 'invalid window dimensions')
   logicalWidth, logicalHeight=logicalWidth or 240, logicalHeight or 320
   assert(finite_positive(logicalWidth) and finite_positive(logicalHeight), 'invalid canvas dimensions')
   local ratio=math.min(width/logicalWidth, height/logicalHeight)
-  local scale=ratio>=1 and math.floor(ratio) or ratio
+  -- Android touchscreens benefit from using the entire available width. Keep
+  -- integer pixel scaling as the historical/default desktop mode.
+  local fractional=type(options)=='table' and options.fractional==true
+  local scale=(fractional or ratio<1) and ratio or math.floor(ratio)
   return {scale=scale, x=math.floor((width-logicalWidth*scale)/2),
     y=math.floor((height-logicalHeight*scale)/2),width=logicalWidth,height=logicalHeight}
 end
