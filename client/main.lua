@@ -18,6 +18,7 @@ local registry_tokens = require('lib.registry_tokens')
 local visual_capture = require('lib.visual_capture')
 local social_poll = require('lib.social_poll')
 local social_send = require('lib.social_send')
+local mobile_touch = require('lib.mobile_touch')
 local c = legacy.colors
 local W,H = 240,320
 local MENU_Y,MENU_ROW=91,22
@@ -30,7 +31,7 @@ local options = {
   'Social local (prototipo)', 'Recursos originais (JAR)', 'Sair'
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
-local touches = {}
+local touchGesture = mobile_touch.new()
 local history = jcl_history.new(16)
 local previousView = 'menu'
 local guestSession = nil -- ephemeral; never persisted
@@ -55,6 +56,24 @@ local function localPoint(x,y)
   local dw,dh=love.graphics.getDimensions()
   return viewport.fromWindow(viewport.fit(dw,dh,W,H),x,y)
 end
+-- Tell the mobile IME where the active field sits inside the scaled canvas.
+local function setKeyboard(enabled, host)
+  if not enabled then return love.keyboard.setTextInput(false) end
+  local scale,ox,oy=transform()
+  local x,y,w,h=15,136,210,34
+  if not host and document and computed then
+    for _,entry in ipairs(computed.entries) do
+      if entry.index==document.selected then
+        y=math.max(TOP,math.min(BOTTOM-30,TOP+entry.y-scroll+entry.height-30))
+        h=math.min(42,math.max(24,entry.height))
+        break
+      end
+    end
+  end
+  love.keyboard.setTextInput(true,
+    math.floor(ox+x*scale),math.floor(oy+y*scale),
+    math.floor(w*scale),math.floor(h*scale))
+end
 local function cancelPoll()
   if pollJob then social_poll.cancel(pollJob);pollJob=nil end
   pollPending=nil;pollElapsed=0;pollHint=''
@@ -77,12 +96,12 @@ local function returnMenu()
   cancelPoll()
   view='menu';scroll=0;computed=nil;document=nil
   jcl_history.clear(history)
-  love.keyboard.setTextInput(false)
+  setKeyboard(false)
 end
 local function showError(message)
   if view ~= 'status' then previousView=view end
   status=tostring(message);view='status'
-  love.keyboard.setTextInput(false)
+  setKeyboard(false)
 end
 local function dismissStatus()
   if previousView=='jcl' and document then view='jcl'
@@ -114,7 +133,7 @@ local function openJCL(source, preservePrevious, socialResponse)
   sendHint=''
   document=jcl_view.new(result)
   view='jcl';scroll=0
-  love.keyboard.setTextInput(false)
+  setKeyboard(false)
   refreshLayout(true)
   return true
 end
@@ -125,7 +144,7 @@ local function goBack()
   if prior then
     document=prior
     view='jcl';scroll=priorScroll
-    love.keyboard.setTextInput(false)
+    setKeyboard(false)
     refreshLayout(false)
   else returnMenu() end
 end
@@ -165,7 +184,7 @@ local function activateMenu()
     local data,err=socketRequest('/revival/ping')
     if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':5190\n\nTeste somente de transporte.')
     else showError('Falha de teste: '..tostring(err or data)) end
-  elseif selected==4 then view='host';love.keyboard.setTextInput(true)
+  elseif selected==4 then view='host';setKeyboard(true,true)
   elseif selected==5 then
     local file=love.filesystem.read('fixtures/composition.xml')
     if file then openJCL(file) else showError('Fixture de composicao nao encontrada.') end
@@ -322,7 +341,7 @@ local function softkey(kind)
   end
   if document.editing then
     document.editing=false
-    love.keyboard.setTextInput(false)
+    setKeyboard(false)
     refreshLayout(true)
     return
   end
@@ -351,7 +370,7 @@ end
 activateJCL = function()
   local active=jcl_view.item(document)
   local result=jcl_view.activate(document)
-  if result=='editing' then love.keyboard.setTextInput(true)
+  if result=='editing' then setKeyboard(true,false)
   elseif result=='choosing' or result=='selected' then refreshLayout(true)
   elseif result then navigate(result,active) end
 end
@@ -599,7 +618,7 @@ function love.keypressed(key)
     end
     if document.editing then
       if key=='return' or key=='kpenter' or key=='escape' then
-        document.editing=false;love.keyboard.setTextInput(false)
+        document.editing=false;setKeyboard(false)
       elseif key=='backspace' then jcl_view.backspace(document);refreshLayout(true) end
     elseif key=='up' then jcl_view.move(document,-1);refreshLayout(true)
     elseif key=='down' then jcl_view.move(document,1);refreshLayout(true)
@@ -657,7 +676,7 @@ local function pointer(x,y)
       local index=layout.hit(computed,px-10,py-TOP,scroll,220,VH)
       if index then
         local item = jcl_view.form(document).items[index]
-        if document.editing then document.editing=false;love.keyboard.setTextInput(false) end
+        if document.editing then document.editing=false;setKeyboard(false) end
         if document.choosing then jcl_view.choice_close(document) end
         document.selected=index
         local option=layout.choice_hit(computed,index,py-TOP,scroll)
@@ -678,23 +697,24 @@ function love.mousepressed(x,y,button,istouch)
   pointer(x,y)
 end
 function love.touchpressed(id,x,y)
-  touches[id]={x=x,y=y,last=y,moved=false}
+  local px,py=localPoint(x,y)
+  local scale=transform()
+  local content=px and view=='jcl' and computed and py>=TOP and py<BOTTOM
+  mobile_touch.press(touchGesture,id,x,y,content,scale)
 end
 function love.touchmoved(id,x,y)
   if sendJob then return end
-  local t=touches[id]
-  if not t then return end
   local scale=transform()
-  if math.abs(y-t.y)>8 or math.abs(x-t.x)>8 then t.moved=true end
-  if view=='jcl' and computed and t.moved then
-    scroll=layout.clamp_scroll(computed,scroll+(t.last-y)/scale,VH)
+  local delta=mobile_touch.move(touchGesture,id,x,y,scale)
+  if view=='jcl' and computed and delta~=0 then
+    scroll=layout.clamp_scroll(computed,scroll+delta,VH)
   end
-  t.last=y
 end
 function love.touchreleased(id,x,y)
-  local t=touches[id]
-  touches[id]=nil
-  if t and not t.moved then pointer(x,y) end
+  if mobile_touch.release(touchGesture,id,x,y) and not sendJob then pointer(x,y) end
+end
+function love.focus(focused)
+  if not focused then mobile_touch.reset(touchGesture) end
 end
 function love.wheelmoved(_,dy)
   if sendJob then return end

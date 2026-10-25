@@ -21,6 +21,8 @@ jobs:
           lua5.4 tests/test_jcl_choices.lua
           lua5.4 tests/test_client_choices.lua
           lua5.4 tests/test_client_smoke.lua
+          lua5.4 tests/test_mobile_touch.lua
+          lua5.4 tests/test_client_mobile.lua
           lua5.4 tests/test_submit.lua
           lua5.4 tests/test_lab_host.lua
           lua5.4 tests/test_lab_client.lua

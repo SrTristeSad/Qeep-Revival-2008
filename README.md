@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 21 — auditoria do pacote Windows e pipeline de APK Android de depuração
+## Estado atual: fase 22 — gestos de toque e suporte ao teclado virtual
+
+- **Fase 22:** gestos em tela sensível ao toque com limiar escalonado, rolagem limitada à área JCL e posicionamento do teclado virtual nos campos de entrada; testes de eventos simulados em Lua. A compilação de APK debug da Fase 21 foi concluída no GitHub Actions, mas a execução em aparelho físico continua pendente. Veja [toque Android](docs/android-toque-fase22.md).
 
 - **Fase 20:** workflow automatizado para gerar ZIP com EXE Windows x64 e DLLs do LÖVE 11.5, validando o runtime por SHA-256. O mesmo workflow gera `.love` utilizável no LÖVE Loader Android. A execução gráfica Windows e Android **ainda depende de testes em dispositivo**. Veja [distribuição da Fase 20](docs/empacotamento-fase20.md).
 
@@ -46,7 +48,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 
 **Recursos gráficos originais opcionais:** com o JAR de referência em mãos, execute `python tools/import_jar_assets.py qeep-94724.jar` na raiz. Ele valida os hashes antes de extrair os três PNGs para `client/assets/original/` (ignorados no Git). O logotipo passa a aparecer na tela inicial de laboratório. Para mais informações, veja `docs/navegacao-e-assets-fase5.md`.
 
-**Android:** o workflow Windows gera também um `.love` para abrir pelo LÖVE Loader Android 11.5, mas **ainda não há APK independente nem testes em dispositivo**. Será preciso embalar `client/` com a distribuição LÖVE Android compatível e verificar LuaSocket no pacote final.
+**Android:** o workflow `android-build.yml` compila um APK de depuração independente do LÖVE Loader, disponível nos artefatos do GitHub Actions (o primeiro build foi aprovado em 25/10/2026). Para uso inicial, instale manualmente o APK de debug no telefone. **Ainda falta testar a inicialização, o teclado virtual e as conexões LAN em aparelho real.** O servidor não deve ser exposto à Internet.
 
 **Testes independentes:** execute os testes `tests/test_protocol.lua`, `test_jcl.lua`, `test_jcl_layout.lua`, `test_jcl_styles.lua`, `test_client_smoke.lua`, `test_submit.lua`, `test_lab_host.lua` , `test_lab_client.lua`, `test_jcl_history.lua`, `test_client_history.lua`, `test_original_logo.lua`, `test_jcl_choices.lua` e `test_client_choices.lua` com `lua` (ou `texlua`) na raiz. Os testes de interface simulados não exercitam GPU real. Com o servidor executando e LuaSocket instalado, execute também `lua tests/test_socket_roundtrip.lua` para o teste TCP real.
 
