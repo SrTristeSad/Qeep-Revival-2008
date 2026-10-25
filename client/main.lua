@@ -8,6 +8,7 @@ local legacy = require('lib.legacy_palette')
 local jcl_style = require('lib.jcl_style')
 local jcl_submit = require('lib.jcl_submit')
 local lab_host = require('lib.lab_host')
+local connection_settings = require('lib.connection_settings')
 local jcl_history = require('lib.jcl_history')
 local assets = require('lib.legacy_assets')
 local symbols = require('lib.legacy_symbols')
@@ -24,7 +25,8 @@ local W,H = 240,320
 local MENU_Y,MENU_ROW=91,22
 local TOP,BOTTOM = 65,281
 local VH = BOTTOM-TOP
-local view, selected, serverHost, status = 'menu',1,'127.0.0.1',''
+local view, selected, serverHost, serverPort, status = 'menu',1,'127.0.0.1',5190,''
+local endpointDraft, endpointHint, isMobile = '','',false
 local options = {
   'Abrir JCL (offline)', 'Receber JCL do servidor', 'Testar servidor local',
   'Configurar endereco IP', 'Composicao JCL (laboratorio)', 'Sobre o projeto',
@@ -155,7 +157,7 @@ local function socketRequest(path, kind, properties)
   local conn,reason=socklib.tcp()
   if not conn then return nil,tostring(reason) end
   conn:settimeout(1.5)
-  local connected,connectErr=conn:connect(serverHost,5190)
+  local connected,connectErr=conn:connect(serverHost,serverPort)
   if not connected then conn:close();return nil,connectErr end
   local props={}
   for k,v in pairs(properties or {lang='pt-BR'}) do props[k]=v end
@@ -182,9 +184,12 @@ local function activateMenu()
     if source then openJCL(source) else showError('Falha no servidor: '..tostring(err)) end
   elseif selected==3 then
     local data,err=socketRequest('/revival/ping')
-    if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':5190\n\nTeste somente de transporte.')
+    if data=='PONG' then showError('Servidor Lua respondeu!\nHost: '..serverHost..':'..serverPort\n\nTeste somente de transporte.')
     else showError('Falha de teste: '..tostring(err or data)) end
-  elseif selected==4 then view='host';setKeyboard(true,true)
+  elseif selected==4 then
+    endpointDraft=connection_settings.format(serverHost,serverPort) or ''
+    endpointHint=''
+    view='host';setKeyboard(true,true)
   elseif selected==5 then
     local file=love.filesystem.read('fixtures/composition.xml')
     if file then openJCL(file) else showError('Fixture de composicao nao encontrada.') end
@@ -231,7 +236,7 @@ local function navigate(href, activated)
       if not lab_host.valid(serverHost) then return showError('Endereço local inválido') end
       local available,socklib=pcall(require,'socket')
       if not available then return showError('LuaSocket indisponível no cliente') end
-      local task,err=social_send.start(socklib,protocol,serverHost,5190,guestSession,peer,props)
+      local task,err=social_send.start(socklib,protocol,serverHost,serverPort,guestSession,peer,props)
       if task then
         sendHint=''
         sendJob=task;sendHint='Enviando mensagem...';cancelPoll()
@@ -328,7 +333,7 @@ function love.update(dt)
     local ok,socklib=pcall(require,'socket')
     if not ok then pollHint='LuaSocket ausente: atualização manual';pollElapsed=0;return end
     local props=document.document.props or {}
-    local job,err=social_poll.start(socklib,protocol,serverHost,5190,guestSession,peer,props.chatRevision)
+    local job,err=social_poll.start(socklib,protocol,serverHost,serverPort,guestSession,peer,props.chatRevision)
     if job then pollJob=job else pollHint='Não foi possível atualizar a conversa';pollElapsed=0 end
   end
 end
@@ -378,11 +383,24 @@ function love.load()
   love.graphics.setDefaultFilter('nearest','nearest')
   font,big=love.graphics.newFont(12),love.graphics.newFont(17)
   originalLogo=assets.load('logo.png',love.graphics,imageCache)
-  local saved=love.filesystem.read('host.txt')
-  if saved and #saved<128 then
-    local clean=saved:gsub('%s+','')
-    if lab_host.valid(clean) then serverHost=clean end
+  local os_name=love.system and love.system.getOS and love.system.getOS() or 'Unknown'
+  isMobile=(os_name=='Android' or os_name=='iOS')
+  serverHost=connection_settings.default_for(os_name)
+  serverPort=connection_settings.default_port
+  local read_ok,saved=pcall(love.filesystem.read,'endpoint.txt')
+  if not read_ok then saved=nil end
+  if saved then
+    local host,port=connection_settings.parse(saved)
+    if host then serverHost,serverPort=host,port end
+  else
+    local legacy_ok,legacy_host=pcall(love.filesystem.read,'host.txt')
+    if not legacy_ok then legacy_host=nil end
+    if legacy_host then
+      local host,port=connection_settings.parse(legacy_host)
+      if host then serverHost,serverPort=host,port end
+    end
   end
+  if isMobile and serverHost=='' then selected=4 end
 end
 local function drawJCL()
   local form=jcl_view.form(document)
@@ -555,10 +573,13 @@ function love.draw()
     if view=='menu' and originalLogo and love.graphics.draw then
       paint(c.white)
       love.graphics.draw(originalLogo,math.floor((W-originalLogo:getWidth())/2),28)
-      text('Laboratorio (nao historico)',7,72,W-14,'center')
+      text(isMobile and serverHost=='' and 'Configure o IP do PC no menu' or
+        'Laboratorio (nao historico)',7,72,W-14,'center')
     else
       text('Laboratorio Lua / LOVE',11,38,W-22,'center',true)
-      text('Interface provisoria; nao e tela original',7,63,W-14,'center')
+      text(view=='menu' and isMobile and serverHost=='' and
+        'Configure o IP do PC no menu' or
+        'Interface provisoria; nao e tela original',7,63,W-14,'center')
     end
     paint(c.olive);rect('fill',9,83,W-18,1)
     if view=='menu' then
@@ -571,11 +592,14 @@ function love.draw()
         text((selected==i and '> ' or '  ')..option,16,y+4,W-32)
       end
     elseif view=='host' then
-      text('IP ou nome do servidor:',15,106,215)
+      text('Servidor LAN (IPv4:porta)',15,106,215)
       paint(c.white);rect('fill',12,136,216,34)
       paint(c.purple);rect('line',12,136,216,34)
-      text(serverHost..'_',18,146,206)
-      text('Digite o IP do PC na rede local.\nEnter salva. Esc volta.',12,185,216)
+      local visible=endpointDraft
+      if #visible>25 then visible='...'..visible:sub(-22) end
+      text(visible..'_',18,146,206)
+      text(endpointHint~='' and endpointHint or
+        'Ex.: 192.168.1.50:5190\nIP do computador, nao do celular.\nEnter: salvar  Esc: cancelar',12,184,216)
     elseif view=='status' then
       text('Resultado',13,106,214,'center',true)
       text(status,14,153,212)
@@ -639,14 +663,13 @@ function love.keypressed(key)
     visualMode=(visualMode==1 and 2 or 1)
   elseif view=='host' then
     if key=='return' or key=='kpenter' then
-      serverHost=serverHost:gsub('%s+','')
-      if lab_host.valid(serverHost) then
-        love.filesystem.write('host.txt',serverHost)
-        returnMenu()
-      else
-        return showError('Endereco invalido. Use localhost ou IPv4 privado (192.168.x.x, 10.x.x.x, 172.16-31.x.x).')
-      end
-    elseif key=='backspace' then serverHost=serverHost:sub(1,-2)
+      local host,port,err=connection_settings.parse(endpointDraft)
+      if not host then endpointHint=err;return end
+      local ok=love.filesystem.write('endpoint.txt',connection_settings.format(host,port))
+      if not ok then endpointHint='Nao foi possivel salvar a configuracao';return end
+      serverHost,serverPort=host,port
+      returnMenu()
+    elseif key=='backspace' then endpointDraft=connection_settings.backspace(endpointDraft);endpointHint=''
     elseif key=='escape' then returnMenu() end
   elseif view=='status' and (key=='escape' or key=='return' or key=='kpenter') then
     dismissStatus()
@@ -654,8 +677,8 @@ function love.keypressed(key)
 end
 function love.textinput(t)
   if sendJob then return end
-  if view=='host' and #serverHost+#t<128 and t:match('^[%w%.:%-]+$') then
-    serverHost=serverHost..t
+  if view=='host' then
+    endpointDraft=connection_settings.append(endpointDraft,t);endpointHint=''
   elseif view=='jcl' and document and document.editing then
     jcl_view.text(document,t);refreshLayout(true)
   end
@@ -688,6 +711,8 @@ local function pointer(x,y)
         refreshLayout(true)
       end
     end
+  elseif view=='host' and py>=118 and py<190 then
+    setKeyboard(true,true)
   elseif view=='visual' and py>=H-25 then returnMenu()
   elseif view=='visual' and py>=255 then visualMode=(visualMode==1 and 2 or 1)
   elseif py>=H-34 then returnMenu() end
@@ -715,6 +740,11 @@ function love.touchreleased(id,x,y)
 end
 function love.focus(focused)
   if not focused then mobile_touch.reset(touchGesture) end
+end
+function love.resize(width,height)
+  mobile_touch.reset(touchGesture)
+  if view=='host' then setKeyboard(true,true)
+  elseif view=='jcl' and document and document.editing then setKeyboard(true,false) end
 end
 function love.wheelmoved(_,dy)
   if sendJob then return end
