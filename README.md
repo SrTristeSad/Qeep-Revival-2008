@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 23 — configuração LAN Android e Windows
+## Estado atual: fase 24
+
+- **Fase 24:** teste de inicialização do APK com emulador Android no GitHub Actions; screenshot, logcat e relatório disponíveis após a execução. Android pausa consultas ao perder foco e restaura o teclado de edição ao retornar. Veja [guia](docs/validacao-android-fase24.md). — configuração LAN Android e Windows
 
 - **Fase 23:** servidor privado com IP e porta configuráveis, armazenamento local e migração de host.txt; Android sem loopback como padrão; IME reposicionado após resize. APK da Fase 22 compilado com sucesso; testes em telefone real pendentes. Veja docs/android-rede-fase23.md.
 

@@ -1,0 +1,54 @@
+name: Android emulator startup smoke
+
+on:
+  workflow_run:
+    workflows: ["Build Android debug APK (LÖVE 11.5a)"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout the APK's exact source revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Download the APK from the successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: Qeep-Revival-2008-Android-debug-APK
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: android-artifact
+      - name: Verify decision rules
+        run: python3 -m unittest discover -s tests -p 'test_android_smoke.py' -v
+      - name: Allow hardware acceleration on hosted runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Boot Android 34 emulator and smoke test APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: python3 tools/android_smoke.py --apk android-artifact/Qeep-Revival-2008-Android-debug.apk --output android-smoke-results
+      - name: Store screenshot, logcat and launch results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Qeep-Android-emulator-startup-evidence
+          path: android-smoke-results/
+          if-no-files-found: warn

@@ -34,6 +34,7 @@ local options = {
 }
 local font,big,document,computed,scroll = nil,nil,nil,nil,0
 local touchGesture = mobile_touch.new()
+local appFocused = true -- Android may suspend the activity while a chat is open
 local history = jcl_history.new(16)
 local previousView = 'menu'
 local guestSession = nil -- ephemeral; never persisted
@@ -293,6 +294,7 @@ local function applyPolledChat(source, peer)
   pollHint='Conversa atualizada automaticamente'
 end
 function love.update(dt)
+  if isMobile and not appFocused then return end
   if sendJob then
     local result=social_send.step(sendJob,dt)
     if result then
@@ -739,7 +741,20 @@ function love.touchreleased(id,x,y)
   if mobile_touch.release(touchGesture,id,x,y) and not sendJob then pointer(x,y) end
 end
 function love.focus(focused)
-  if not focused then mobile_touch.reset(touchGesture) end
+  appFocused = not not focused
+  if not focused then
+    mobile_touch.reset(touchGesture)
+    if isMobile then
+      cancelPoll() -- never poll LAN in background on Android
+      if view=='host' or (view=='jcl' and document and document.editing) then
+        setKeyboard(false)
+      end
+    end
+  elseif isMobile then
+    if view=='host' then setKeyboard(true,true)
+    elseif view=='jcl' and document and document.editing then setKeyboard(true,false) end
+    pollElapsed=3
+  end
 end
 function love.resize(width,height)
   mobile_touch.reset(touchGesture)

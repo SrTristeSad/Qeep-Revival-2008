@@ -53,6 +53,10 @@ local before=keyboard[#keyboard]
 width,height=640,480;love.resize(width,height)
 local after=keyboard[#keyboard]
 assert(after[1] and (before[2]~=after[2] or before[3]~=after[3]))
+love.focus(false)
+assert(keyboard[#keyboard][1]==false,'Android blur closes active IME')
+love.focus(true)
+assert(keyboard[#keyboard][1]==true,'Android focus restores IME')
 love.keypressed('escape')
 assert(saved['endpoint.txt']=='192.168.1.50:6200')
 print('OK: Android LAN settings UI, port and resize')
