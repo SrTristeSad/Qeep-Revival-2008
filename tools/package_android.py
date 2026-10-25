@@ -35,7 +35,7 @@ def verify_upstream(tree: Path) -> None:
     if not all(p.is_file() for p in needed):
         raise AndroidPackagingError('Expected a complete love2d/love-android checkout')
     gradle = (tree / 'app/build.gradle').read_text(encoding='utf-8')
-    if "'embed'" not in gradle or "'noRecord'" not in gradle:
+    if not re.search(r'\bembed\s*\{', gradle) or not re.search(r'\bnoRecord\s*\{', gradle):
         raise AndroidPackagingError('Unsupported upstream Android flavors')
     if "25.2.9519653" not in gradle or 'compileSdk 34' not in gradle:
         raise AndroidPackagingError('Unsupported Android version; expected LÖVE 11.5a')

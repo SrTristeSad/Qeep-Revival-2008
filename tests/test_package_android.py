@@ -32,7 +32,6 @@ class AndroidPackageTests(unittest.TestCase):
         )
         (self.upstream / 'app/build.gradle').write_text(
             "ndkVersion '25.2.9519653'\ncompileSdk 34\nproductFlavors { embed{} noRecord{} }\n"
-            "def foo = 'embed'\ndef bar = 'noRecord'\n"
         )
         (self.upstream / 'app/src/main/AndroidManifest.xml').write_text(
             '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
