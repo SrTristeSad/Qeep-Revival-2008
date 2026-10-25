@@ -2,7 +2,9 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 19 — revisão de evidências visuais, sem captura autêntica disponível
+## Estado atual: fase 20 — empacotador Windows x64 verificável e cliente LÖVE para Android (sem APK)
+
+- **Fase 20:** workflow automatizado para gerar ZIP com EXE Windows x64 e DLLs do LÖVE 11.5, validando o runtime por SHA-256. O mesmo workflow gera `.love` utilizável no LÖVE Loader Android. A execução gráfica Windows e Android **ainda depende de testes em dispositivo**. Veja [distribuição da Fase 20](docs/empacotamento-fase20.md).
 
 - **Fase 19:** inspetor de 11 estilos `sN` extraídos do `registry.ini` original; mostra somente tokens existentes e não interpreta valores de gradiente como cores planas. No laboratório **Recursos originais (JAR)**, use **Tab** para alternar o painel. Os módulos e testes foram gerados a partir do JAR de referência; a captura autêntica da tela Java ME **continua pendente**. Veja `docs/estilos-registry-fase19.md`.
 
@@ -36,7 +38,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 
 ## Executar
 
-**Cliente Windows / desktop:** instale [LÖVE 11.x](https://love2d.org/), abra a pasta `client` com LÖVE ou, no terminal, use `love client` a partir da raiz do repositório.
+**Cliente Windows / desktop:** baixe o artefato Windows x64 do GitHub Actions na `main` e abra o `.exe` com as DLLs lado a lado (LÖVE não precisa ser instalado). Para desenvolvimento, ainda é possível instalar [LÖVE 11.x](https://love2d.org/) e usar `love client`. Consulte `docs/empacotamento-fase20.md`.
 
 **Servidor de testes:** instale Lua e LuaSocket (`luarocks install luasocket`), depois execute `lua server/main.lua` a partir da raiz. Ele responde ao laboratório de protocolo e às rotas sintéticas `/revival/social/...` (descritas em `docs/social-fase9.md`) e aceita apenas conexões em `127.0.0.1:5190` por padrão. Para receber conexões de um telefone na mesma rede, execute `lua server/main.lua 0.0.0.0 5190`, configure um IPv4 privado do computador no cliente (endereços públicos são rejeitados) e permita a porta no firewall **somente na rede confiável**. O laboratório possui armazenamento persistente para contas e conversas entre contatos, mas **não possui TLS nem autenticação segura para a Internet**. Os dados do chat não são criptografados no disco. Não exponha na internet.
 
@@ -44,7 +46,7 @@ Reconstrução **independente** e orientada por evidências do cliente clássico
 
 **Recursos gráficos originais opcionais:** com o JAR de referência em mãos, execute `python tools/import_jar_assets.py qeep-94724.jar` na raiz. Ele valida os hashes antes de extrair os três PNGs para `client/assets/original/` (ignorados no Git). O logotipo passa a aparecer na tela inicial de laboratório. Para mais informações, veja `docs/navegacao-e-assets-fase5.md`.
 
-**Android:** a base cliente está escrita para LÖVE Android, mas **ainda não há APK compilado nem testes em dispositivo**. Será preciso embalar `client/` com a distribuição LÖVE Android compatível e verificar LuaSocket no pacote final.
+**Android:** o workflow Windows gera também um `.love` para abrir pelo LÖVE Loader Android 11.5, mas **ainda não há APK independente nem testes em dispositivo**. Será preciso embalar `client/` com a distribuição LÖVE Android compatível e verificar LuaSocket no pacote final.
 
 **Testes independentes:** execute os testes `tests/test_protocol.lua`, `test_jcl.lua`, `test_jcl_layout.lua`, `test_jcl_styles.lua`, `test_client_smoke.lua`, `test_submit.lua`, `test_lab_host.lua` , `test_lab_client.lua`, `test_jcl_history.lua`, `test_client_history.lua`, `test_original_logo.lua`, `test_jcl_choices.lua` e `test_client_choices.lua` com `lua` (ou `texlua`) na raiz. Os testes de interface simulados não exercitam GPU real. Com o servidor executando e LuaSocket instalado, execute também `lua tests/test_socket_roundtrip.lua` para o teste TCP real.
 
@@ -128,3 +130,7 @@ O menu **Recursos originais (JAR)** reúne cores e imagens verificadas da versã
 ### Fase 17 — captura original em sandbox Linux
 
 `tools/j2me_capture.py` acrescenta execução do JAR em tela virtual isolada, exigindo `unshare -n` e recusando-se a iniciar caso o isolamento falhe. Salva o screenshot com SHA-256 e relatório de proveniência, mas exige revisão manual para reconhecer uma tela histórica. **Ainda não foi possível executar o JAR no ambiente de desenvolvimento atual.** Consulte [o procedimento](docs/captura-autentica-fase17.md).
+
+### Fase 20 — distribuição Windows e Android Loader
+
+O workflow `windows-build.yml` gera um ZIP Windows x64 contendo `.exe` e DLLs do runtime verificado, e um `.love` importável no LÖVE Loader para Android (não é APK). Os pacotes públicos omitem os PNGs históricos e o servidor, que permanece separado. Veja [`docs/empacotamento-fase20.md`](docs/empacotamento-fase20.md).

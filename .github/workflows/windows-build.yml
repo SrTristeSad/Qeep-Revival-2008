@@ -1,0 +1,51 @@
+name: Build Windows x64 (LÖVE 11.5)
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit-test the standalone packager
+        run: python3 -m unittest discover -s tests -p 'test_package_windows.py' -v
+      - name: Download official LÖVE Windows x64 11.5 distribution
+        run: |
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://github.com/love2d/love/releases/download/11.5/love-11.5-win64.zip' \
+            --output "$RUNNER_TEMP/love-11.5-win64.zip"
+          echo 'ba6e56be2685e53c817749c4a5007f51137136fe5a3ab64920508babc2e74369  '"$RUNNER_TEMP/love-11.5-win64.zip" | sha256sum --check
+      - name: Create Windows standalone and Android Loader package
+        run: |
+          python3 tools/package_windows.py \
+            --client client --runtime-zip "$RUNNER_TEMP/love-11.5-win64.zip" \
+            --output-zip dist/Qeep-Revival-2008-Windows-x64.zip \
+            --output-love dist/Qeep-Revival-2008.love
+      - name: Validate generated packages
+        run: |
+          python3 - <<'PY'
+          import io, zipfile
+          with zipfile.ZipFile('dist/Qeep-Revival-2008-Windows-x64.zip') as bundle:
+              names=bundle.namelist()
+              assert 'QeepRevival2008/QeepRevival2008.exe' in names
+              assert 'QeepRevival2008/license.txt' in names
+              with zipfile.ZipFile(io.BytesIO(bundle.read('QeepRevival2008/QeepRevival2008.exe'))) as fused:
+                  assert 'main.lua' in fused.namelist()
+                  assert 'assets/original/logo.png' not in fused.namelist()
+          with zipfile.ZipFile('dist/Qeep-Revival-2008.love') as client:
+              assert 'main.lua' in client.namelist()
+          print('Distribution archives have the expected structure')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Qeep-Revival-2008-Fase20-builds
+          path: |
+            dist/Qeep-Revival-2008-Windows-x64.zip
+            dist/Qeep-Revival-2008.love
+          if-no-files-found: error
