@@ -13,3 +13,6 @@ reverse-engineering/original/
 server/data/*.db
 server/data/*.db.tmp
 server/data/*.db.bak
+
+# Local emulator captures, potentially including sensitive windows/logs.
+visual-results/

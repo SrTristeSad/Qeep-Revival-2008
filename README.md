@@ -2,7 +2,7 @@
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 16 — protocolo de captura e comparação visual sem redes externas
+## Estado atual: fase 17 — captura controlada em emulador sem rede
 
 - **Fase 16:** ferramenta de pré-verificação e execução isolada do JAR Java ME, comparação de capturas PNG e captura local do cliente LÖVE via tecla `F12`. **Ainda não foi obtida captura autenticada do emulador**; não existe equivalência visual 1:1 comprovada. Leia [procedimento seguro e reprodutível](docs/fidelidade-capturas-fase16.md).
 
@@ -120,3 +120,7 @@ O menu **Recursos originais (JAR)** reúne cores e imagens verificadas da versã
 ### Fase 16 — capturas e comparações de evidências
 
 `python3 tools/j2me_preflight.py qeep-94724.jar` identifica o JAR sem executar o programa; `--run-isolated` só executa com isolamento Linux de rede comprovado. O cliente LÖVE salva uma captura local com `F12`, e `tools/compare_visual.py` compara capturas explicitamente fornecidas, com máscaras, escalas inteiras e relatório de diferenças. Não foram obtidas telas reais do Qeep no emulador nesta fase. Veja [procedimento e limitações](docs/fidelidade-capturas-fase16.md).
+
+### Fase 17 — captura original em sandbox Linux
+
+`tools/j2me_capture.py` acrescenta execução do JAR em tela virtual isolada, exigindo `unshare -n` e recusando-se a iniciar caso o isolamento falhe. Salva o screenshot com SHA-256 e relatório de proveniência, mas exige revisão manual para reconhecer uma tela histórica. **Ainda não foi possível executar o JAR no ambiente de desenvolvimento atual.** Consulte [o procedimento](docs/captura-autentica-fase17.md).
