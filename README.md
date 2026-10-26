@@ -1,5 +1,8 @@
 # Qeep Revival 2008
 
+**Fase 30:** a comunicação Android ↔ Lua foi comprovada na execução `40259673092` (rotas de ping e abertura social). O novo smoke passa a tocar no campo de apelido e no botão de entrada como visitante, verificando a rota real `/revival/social/join`. A autenticação de contas registradas no Android ainda depende de validação.
+
+
 **Fase 29:** corrigido o teste de rede Android. O workflow isolava cada linha de shell, tornando `SERVER_PID=$!` inacessível na linha seguinte; a ferramenta agora gerencia o ciclo de vida do servidor Lua na mesma execução Python, eliminando logs antigos antes do teste. A comunicação real permanece pendente até a validação em emulador. Leia [`docs/android-rede-fase29.md`](docs/android-rede-fase29.md).
 
 **Fase 28:** confirmadas sete verificações de navegação no emulador Android 34, incluindo formulário JCL secundário e retorno por toque. Acrescentado teste Android↔servidor Lua real com `adb reverse`, loopback `127.0.0.1:5190` e confirmação no servidor das rotas de ping/social (somente nomes das rotas, sem conteúdo privado). A execução completa desta nova integração depende da próxima rodada Android no GitHub Actions. Leia `docs/android-rede-fase28.md`.

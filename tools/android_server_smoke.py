@@ -118,6 +118,20 @@ def run(output,package,server_pid,trace):
         for route,ok in received.items():
             if not ok:raise AssertionError('Lua server never received '+route)
             passed('server_received_'+route.replace('/','_'))
+        # Validate a real guest submission from the Android JCL screen.
+        tap(geom,120,176)
+        adb('shell','input','text','f30guest')
+        adb('shell','input','keyevent','66')
+        time.sleep(.8)
+        before_join=screenshot(output,'10-guest-nickname')
+        tap(geom,120,205)
+        after_join=screenshot(output,'11-guest-home')
+        delta=changed(before_join,after_join,geom,.035)
+        guest=observed_routes(trace,('/revival/social/join',))
+        record['routes_observed'].update(guest)
+        if not guest['/revival/social/join']:
+            raise AssertionError('Android guest join did not reach Lua server')
+        passed('android_guest_join_reached_server',difference=delta)
         if not alive(package):raise AssertionError('APK process died')
         passed('client_alive')
         record['passed']=True
