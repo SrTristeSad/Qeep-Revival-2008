@@ -3,7 +3,75 @@ import re
 import secrets
 import time
 from pathlib import Path
-from account_tcp_smoke import request, require
+import socket
+import struct
+from xml.etree import ElementTree
+
+# ASCII-only subset of the local, synthetic protocol. Not a legacy Qeep client.
+def _word(text):
+    encoded=text.encode('ascii')
+    if len(encoded)>65535:
+        raise ValueError('field too long')
+    return struct.pack('>H',len(encoded))+encoded
+
+def _take(data,pos):
+    if pos+2>len(data):
+        raise ValueError('truncated reply field')
+    count=struct.unpack_from('>H',data,pos)[0]
+    end=pos+2+count
+    if end>len(data):
+        raise ValueError('truncated reply field')
+    return data[pos+2:end].decode('ascii'),end
+
+def request(kind,path,props):
+    if kind!='P' or path!='/revival/social/register/submit':
+        raise ValueError('disposable registration route only')
+    body=b'P'+_word(path)+struct.pack('>I',len(props))
+    for name,value in sorted(props.items()):
+        body+=_word(name)+_word(value)
+    body+=struct.pack('>I',0)
+    with socket.create_connection(('127.0.0.1',5190),timeout=4) as conn:
+        conn.settimeout(4)
+        conn.sendall(struct.pack('>I',len(body))+body)
+        conn.shutdown(socket.SHUT_WR)
+        chunks=[];total=0
+        while True:
+            chunk=conn.recv(65536)
+            if not chunk:break
+            total+=len(chunk)
+            if total>1048576:
+                raise ValueError('reply too large')
+            chunks.append(chunk)
+    data=b''.join(chunks)
+    if not data.startswith(b'R'):
+        raise ValueError('invalid response kind')
+    response_path,pos=_take(data,1)
+    if response_path!=path:
+        raise ValueError('unexpected response path')
+    if pos+4>len(data):
+        raise ValueError('truncated reply')
+    count=struct.unpack_from('>I',data,pos)[0];pos+=4
+    if count>128:
+        raise ValueError('too many response properties')
+    received={}
+    for _ in range(count):
+        key,pos=_take(data,pos)
+        value,pos=_take(data,pos)
+        received[key]=value
+    if pos+4>len(data):
+        raise ValueError('invalid payload length')
+    length=struct.unpack_from('>I',data,pos)[0];pos+=4
+    if pos+length!=len(data):
+        raise ValueError('inconsistent payload size')
+    return received,data[pos:]
+
+def require(response):
+    props,payload=response
+    if props.get('ok')!='true':
+        raise AssertionError('disposable account registration failed')
+    return ElementTree.fromstring(payload.decode('utf8'))
+
+
 
 LOGIN='/revival/social/login'
 LOGIN_OK='/revival/social/login/submit:ok'
