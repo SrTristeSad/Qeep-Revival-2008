@@ -173,3 +173,47 @@ class AndroidRegistrationRegression(unittest.TestCase):
             self.assertEqual(adb.call_args_list[0].args[:3],('shell','am','force-stop'))
             images=[call.args[1] for call in screenshot.call_args_list]
             self.assertFalse(any('credentials' in n or 'success' in n or 'submitted' in n for n in images))
+
+
+class AndroidRegistrationNavigationTests(unittest.TestCase):
+    def test_restart_waits_for_real_render_and_skips_black_frame(self):
+        with patch.object(smoke,'adb') as adb, \
+             patch.object(smoke.time,'sleep'), \
+             patch.object(smoke,'alive',return_value=True), \
+             patch.object(smoke,'screenshot',side_effect=['black','real']) as shot, \
+             patch.object(smoke,'canvas',side_effect=[ValueError('expected 2 purple bands'),{'width_coverage':.999}]):
+            frame, geo=smoke.wait_for_rendered_menu(Path('/tmp/f34'), 'com.example', attempts=3)
+            self.assertEqual(frame,'real')
+            self.assertGreater(geo['width_coverage'],.95)
+            self.assertEqual(shot.call_count,2)
+            self.assertEqual(adb.call_args_list[0].args[:3],('shell','am','force-stop'))
+
+    def test_restart_fails_closed_if_only_black_frames(self):
+        with patch.object(smoke,'adb'), \
+             patch.object(smoke.time,'sleep'), \
+             patch.object(smoke,'alive',return_value=True), \
+             patch.object(smoke,'screenshot',return_value='black'), \
+             patch.object(smoke,'canvas',side_effect=ValueError('black')):
+            with self.assertRaisesRegex(AssertionError,'finish rendering'):
+                smoke.wait_for_rendered_menu(Path('/tmp/f34'), 'com.example', attempts=2)
+
+    def test_registration_link_touches_only_content_not_footer(self):
+        route='/revival/social/register'
+        with patch.object(smoke,'tap') as tap, \
+             patch.object(smoke.time,'sleep'), \
+             patch.object(smoke,'observed_routes',side_effect=[
+                 {route:False},{route:True}
+             ]):
+            selected=smoke.open_registration_link({'width_coverage':1.0},Path('/tmp/fake'))
+            self.assertEqual(selected,277)
+            self.assertEqual([call.args[2] for call in tap.call_args_list],[274,277])
+            self.assertTrue(all(65<call.args[2]<281 for call in tap.call_args_list))
+
+    def test_registration_link_requires_real_server_route(self):
+        route='/revival/social/register'
+        with patch.object(smoke,'tap') as tap, \
+             patch.object(smoke.time,'sleep'), \
+             patch.object(smoke,'observed_routes',return_value={route:False}):
+            with self.assertRaisesRegex(AssertionError,'did not request'):
+                smoke.open_registration_link({'width_coverage':1.0},Path('/tmp/fake'))
+            self.assertEqual(tap.call_count,3)

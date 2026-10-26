@@ -129,22 +129,49 @@ def registration_approved(trace):
         '/revival/social/register/submit:ok']
 
 
-def register_android(output, package, trace):
-    """Submit test account by touch. Never capture its secret success screen."""
+def wait_for_rendered_menu(output, package, attempts=15):
+    """Wait for LOVE canvas after force-stop, not the black Android startup frame.
+
+    A fixed 2-second sleep is insufficient on CI's cold emulator.
+    Only pre-authentication frames are captured; bearer-code views are excluded.
+    """
     adb('shell','am','force-stop',package)
     adb('shell','am','start','-n',f'{package}/{DEFAULT_ACTIVITY}')
-    time.sleep(2.0)
-    menu=screenshot(output,'16-menu-for-registration')
-    geo=canvas(menu)
-    if not alive(package):
-        raise AssertionError('Android client failed to restart')
+    for attempt in range(attempts):
+        time.sleep(1.0)
+        if not alive(package):
+            continue
+        frame=screenshot(output,'16-menu-for-registration')
+        try:
+            geo=canvas(frame)
+        except ValueError:
+            continue
+        if geo['width_coverage']>=.95:
+            return frame,geo
+    raise AssertionError('Android menu did not finish rendering after restart')
+
+
+def open_registration_link(geo, trace):
+    """Only tap within JCL content; y >= 281 is footer, not a link."""
+    route='/revival/social/register'
+    for y in (274,277,270):
+        if y>=281:
+            raise AssertionError('registration link touch outside JCL content')
+        tap(geo,120,y)
+        time.sleep(.6)
+        if observed_routes(trace,(route,))[route]:
+            return y
+    raise AssertionError('registration link did not request the form')
+
+
+def register_android(output, package, trace):
+    """Submit test account by touch. Never capture its secret success screen."""
+    menu,geo=wait_for_rendered_menu(output,package)
     tap(geo,120,MENU_Y+6*MENU_ROW+11)
     welcome=screenshot(output,'17-welcome-for-registration')
     changed(menu,welcome,geo)
-    tap(canvas(welcome),120,281)
+    open_registration_link(canvas(welcome),trace)
     form=screenshot(output,'18-registration-form')
-    if not observed_routes(trace,('/revival/social/register',))['/revival/social/register']:
-        raise AssertionError('registration form route not observed')
     changed(welcome,form,geo)
     ctl=guest_controls(form,canvas(form),require_button=False)
     tap(canvas(form),120,ctl['input_y'])

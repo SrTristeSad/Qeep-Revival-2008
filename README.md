@@ -1,5 +1,8 @@
 # Qeep Revival 2008
 
+**Fase 34 (em validação):** a compilação da Fase 33 passou, mas o cadastro Android não foi confirmado. A captura `16-menu-for-registration.png` estava inteiramente preta após o reinício do APK; a automação agora espera a tela LÖVE renderizar e evita um segundo defeito: tocar em y=281, que está fora da área JCL clicável. O teste exige recebimento real de `/revival/social/register` antes de capturar o formulário. Os códigos de acesso continuam proibidos em capturas e relatórios; o resultado do cadastro só será considerado aprovado após o emulador confirmar. Veja `docs/android-registro-fase34.md`.
+
+
 **Fase 33 (cadastro Android em validação):** Fase 32 comprovou entrada de visitante no emulador Android 34 (run 40331591906). Novo teste abre Criar conta, digita usuário descartável e exige `register/submit:ok` do servidor Lua. Nenhuma captura é feita após submeter o cadastro, pois a resposta contém um código secreto. Login Android ainda pendente. Veja `docs/android-cadastro-fase33.md`.
 
 **Fase 32:** a execução Android 34 da Fase 31 (`40272603749`) abriu o APK e confirmou TCP para `/revival/ping` e `/revival/social/start`, mas o teste tocava em parágrafos em `y=175–185`, não no campo de apelido (`y≈208–226`). Agora o teste identifica as bordas oliva do campo e o botão destacado diretamente na captura real, sem OCR, e exige `/revival/social/join`. A entrada Android permanece pendente de nova execução no CI. Veja `docs/android-formulario-fase32.md`.
