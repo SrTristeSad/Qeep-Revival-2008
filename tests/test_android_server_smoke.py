@@ -2,6 +2,8 @@
 import sys
 import tempfile
 import unittest
+import subprocess
+from unittest.mock import MagicMock
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image, ImageDraw
@@ -34,6 +36,38 @@ class AndroidServerSmokeTests(unittest.TestCase):
             self.assertEqual(smoke.observed_routes(path,routes),{'/revival/ping':False,'/revival/social/start':True})
             path.write_text('/revival/ping\n/revival/social/start\n')
             self.assertTrue(all(smoke.observed_routes(path,routes).values()))
+    def test_manager_holds_server_within_python_and_discards_stale_trace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            trace=Path(tmp)/'trace.log'
+            logfile=Path(tmp)/'server.log'
+            trace.write_text('/revival/ping\n')
+            child=MagicMock()
+            child.pid=4567
+            child.poll.return_value=None
+            with patch.object(smoke.subprocess,'Popen',return_value=child) as popen:
+                with smoke.managed_server(trace,logfile) as running:
+                    self.assertIs(running,child)
+                    self.assertFalse(trace.exists())
+                    args,kwargs=popen.call_args
+                    self.assertEqual(args[0],['lua5.4','server/main.lua','127.0.0.1','5190'])
+                    self.assertEqual(kwargs['env']['QEEP_ROUTE_TRACE'],str(trace.resolve()))
+                    self.assertEqual(kwargs['stdin'],subprocess.DEVNULL)
+                child.terminate.assert_called_once()
+                child.wait.assert_called_once_with(timeout=5)
+
+    def test_manager_reaps_child_after_failure_and_timeout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            child=MagicMock()
+            child.poll.return_value=None
+            child.wait.side_effect=[subprocess.TimeoutExpired('lua5.4',5),0]
+            with patch.object(smoke.subprocess,'Popen',return_value=child):
+                with self.assertRaisesRegex(RuntimeError,'test failure'):
+                    with smoke.managed_server(Path(tmp)/'trace',Path(tmp)/'log'):
+                        raise RuntimeError('test failure')
+            child.terminate.assert_called_once()
+            child.kill.assert_called_once()
+            self.assertEqual(child.wait.call_count,2)
+
     def test_change_checks_pixels_not_text(self):
         img=Image.new('RGB',(1080,1920),(40,40,40))
         draw=ImageDraw.Draw(img)

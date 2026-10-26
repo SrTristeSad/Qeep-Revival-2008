@@ -3,6 +3,8 @@
 Logs only route names; screenshots alone do not prove a request was received.
 """
 import argparse
+from contextlib import contextmanager
+import subprocess
 import json
 import os
 from pathlib import Path
@@ -38,6 +40,36 @@ def changed(a,b,geom,threshold=.035):
     if value<threshold:
         raise AssertionError('screen did not change as expected: %.5f'%value)
     return round(value,5)
+
+@contextmanager
+def managed_server(trace, log_path, executable='lua5.4'):
+    """Launch only a loopback server and keep it alive within this Python process.
+
+    The emulator action runs each script line in its own shell, so shell $!
+    variables do not persist. Cleanup runs even after failed adb assertions.
+    """
+    trace=Path(trace).resolve()
+    log_path=Path(log_path).resolve()
+    trace.parent.mkdir(parents=True,exist_ok=True)
+    log_path.parent.mkdir(parents=True,exist_ok=True)
+    trace.unlink(missing_ok=True)  # reject stale route evidence
+    env=os.environ.copy()
+    env['QEEP_ROUTE_TRACE']=str(trace)
+    with log_path.open('wb') as logfile:
+        child=subprocess.Popen(
+            [executable,'server/main.lua','127.0.0.1',str(PORT)],
+            stdin=subprocess.DEVNULL,stdout=logfile,stderr=subprocess.STDOUT,
+            env=env,cwd=Path(__file__).resolve().parents[1])
+        try:
+            yield child
+        finally:
+            if child.poll() is None:
+                child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait(timeout=5)
 
 def run(output,package,server_pid,trace):
     output.mkdir(parents=True,exist_ok=True)
@@ -103,10 +135,18 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=Path('android-server-results'))
     parser.add_argument('--package',default=DEFAULT_PACKAGE)
-    parser.add_argument('--server-pid',type=int)
+    parser.add_argument('--server-pid',type=int,help='externally managed server PID')
+    parser.add_argument('--start-local-server',action='store_true',help='manage loopback Lua process')
+    parser.add_argument('--server-log',type=Path,default=Path('android-server.log'))
     parser.add_argument('--route-trace',type=Path,default=Path('android-server-routes.log'))
     a=parser.parse_args()
-    ok=run(a.output,a.package,a.server_pid,a.route_trace)
+    if a.start_local_server:
+        if a.server_pid is not None:
+            parser.error('--server-pid and --start-local-server cannot be combined')
+        with managed_server(a.route_trace,a.server_log) as child:
+            ok=run(a.output,a.package,child.pid,a.route_trace)
+    else:
+        ok=run(a.output,a.package,a.server_pid,a.route_trace)
     print('Android -> Lua server:', 'PASS' if ok else 'FAIL', a.output)
     return 0 if ok else 1
 

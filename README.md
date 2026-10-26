@@ -1,5 +1,7 @@
 # Qeep Revival 2008
 
+**Fase 29:** corrigido o teste de rede Android. O workflow isolava cada linha de shell, tornando `SERVER_PID=$!` inacessível na linha seguinte; a ferramenta agora gerencia o ciclo de vida do servidor Lua na mesma execução Python, eliminando logs antigos antes do teste. A comunicação real permanece pendente até a validação em emulador. Leia [`docs/android-rede-fase29.md`](docs/android-rede-fase29.md).
+
 **Fase 28:** confirmadas sete verificações de navegação no emulador Android 34, incluindo formulário JCL secundário e retorno por toque. Acrescentado teste Android↔servidor Lua real com `adb reverse`, loopback `127.0.0.1:5190` e confirmação no servidor das rotas de ping/social (somente nomes das rotas, sem conteúdo privado). A execução completa desta nova integração depende da próxima rodada Android no GitHub Actions. Leia `docs/android-rede-fase28.md`.
 
 **Fase 27:** a validação da Fase 26 terminou aprovada no Android 34, com quatro capturas reais (menu, Sobre, retorno, JCL) e largura útil de 99,96%. Corrigidas as instruções de teclado ainda visíveis nas páginas JCL Android e a sobreposição do subtítulo em Sobre. O teste seguinte passa a verificar também navegação entre formulários JCL por toque. Veja [`docs/android-usabilidade-fase27.md`](docs/android-usabilidade-fase27.md).
