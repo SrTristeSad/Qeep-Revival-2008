@@ -26,7 +26,15 @@ labfile:close()
 local tcp_loop=require('tcp_loop')
 local listener, e = socket.bind(host, port)
 assert(listener, e)
+-- Opt-in route-name-only trace for local emulator CI (no user data).
+-- Enabled only on loopback; never log request properties or message payloads.
+local route_trace_path=host=='127.0.0.1' and os.getenv('QEEP_ROUTE_TRACE') or nil
+local route_trace=route_trace_path and assert(io.open(route_trace_path,'a')) or nil
 local function route(req)
+  if route_trace and type(req.path)=='string' and #req.path<=180 then
+    route_trace:write(req.path,'\n')
+    route_trace:flush()
+  end
   if req.path:sub(1,16)=='/revival/social/' then return social.handle(req) end
   return routes.handle(req,labxml)
 end
