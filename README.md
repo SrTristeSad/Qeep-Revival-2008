@@ -1,10 +1,12 @@
 # Qeep Revival 2008
 
-**Fase 26:** nova validação automatizada da navegação por toque no emulador Android 34 (abrir Sobre, voltar e abrir JCL offline), com capturas reais e análise das barras de interface. A tela inicial da Fase 25 já passou no emulador; o teste ampliado da Fase 26 só será considerado aprovado após GitHub Actions confirmar. Veja [`docs/android-navegacao-fase26.md`](docs/android-navegacao-fase26.md).
+**Fase 27:** a validação da Fase 26 terminou aprovada no Android 34, com quatro capturas reais (menu, Sobre, retorno, JCL) e largura útil de 99,96%. Corrigidas as instruções de teclado ainda visíveis nas páginas JCL Android e a sobreposição do subtítulo em Sobre. O teste seguinte passa a verificar também navegação entre formulários JCL por toque. Veja [`docs/android-usabilidade-fase27.md`](docs/android-usabilidade-fase27.md).
+
+**Fase 26:** validação automatizada de toque concluída no emulador Android 34 (Sobre, voltar, JCL offline). A execução 40244607071 passou e disponibiliza evidências verificáveis. Veja [`docs/android-navegacao-fase26.md`](docs/android-navegacao-fase26.md).
 
 Reconstrução **independente** e orientada por evidências do cliente clássico Qeep para **Android e Windows**, com **Lua + LÖVE (Love2D)** e servidor próprio em Lua. Projeto de preservação e estudo; não é afiliado ao serviço original.
 
-## Estado atual: fase 25 — endereço LAN configurável no Android e no Windows
+## Estado atual: fase 27 — navegação Android testada no emulador; interface histórica ainda pendente
 
 - **Fase 25:** APK abriu no emulador Android 34 (execução do GitHub Actions 40241042226). Captura real confirmou muita margem vazia e rodapé com atalhos de desktop. Android agora usa ampliação proporcional fracionária para ocupar a largura disponível e botões de rodapé por toque (Abrir/Sair, Salvar/Cancelar); Windows mantém escala inteira. Testes em aparelho físico continuam pendentes. Veja [Fase 25](docs/ajustes-android-fase25.md).
 

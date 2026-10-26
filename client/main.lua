@@ -474,11 +474,17 @@ local function drawJCL()
     end
   end
   love.graphics.setScissor()
+  local contextualHint
+  if isMobile then
+    contextualHint=document.editing and 'Toque outro item para concluir' or
+      (document.choosing and 'Toque para selecionar' or 'Toque para abrir ou deslize')
+  else
+    contextualHint=document.editing and 'Enter: concluir edicao' or
+      (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir')
+  end
   local hint = sendHint~='' and sendHint or
     (pollPending and 'Nova mensagem: concluir edicao' or
-    (pollHint~='' and pollHint or nil) or
-    (document.editing and 'Enter: concluir edicao' or
-    (document.choosing and 'Cima/Baixo: opcao  Enter: marcar' or 'Setas: navegar  Enter: abrir')))
+    (pollHint~='' and pollHint or nil) or contextualHint)
   text(hint,7,283,204,'center')
   local strip=assets.load('kui/symbols.png',love.graphics,imageCache)
   if strip then
@@ -578,6 +584,11 @@ function love.draw()
       love.graphics.draw(originalLogo,math.floor((W-originalLogo:getWidth())/2),28)
       text(isMobile and serverHost=='' and 'Configure o IP do PC no menu' or
         'Laboratorio (nao historico)',7,72,W-14,'center')
+    elseif view=='about' then
+      -- A generic two-line subtitle previously crossed the y=83 separator
+      -- on narrow Android viewports. Keep the last line above the rule.
+      text('Sobre o projeto',11,40,W-22,'center',true)
+      text('Reconstrucao experimental',7,67,W-14,'center')
     else
       text('Laboratorio Lua / LOVE',11,38,W-22,'center',true)
       text(view=='menu' and isMobile and serverHost=='' and

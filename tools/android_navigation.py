@@ -119,6 +119,20 @@ def navigate(output: Path, package: str, activity: str) -> bool:
         d3=pixels_changed(back,offline,geom)
         checks.append({'name':'tap_open_offline_jcl','passed':d3>=0.035,'fraction_changed':round(d3,5)})
         if not checks[-1]['passed']:raise AssertionError('Offline JCL touch did not change screen')
+        # Exercise an actual JCL form transition and the clickable left
+        # softkey. This is stronger than testing only root menu navigation.
+        tap(geom,120,175)  # first '#fields' link in the offline fixture
+        fields=screenshot(output,'05-fields')
+        d4=pixels_changed(offline,fields,geom)
+        checks.append({'name':'tap_jcl_link','passed':d4>=0.035,
+                       'fraction_changed':round(d4,5)})
+        if not checks[-1]['passed']:raise AssertionError('JCL link did not change form')
+        tap(geom,45,307)  # synthesized 'Voltar' softkey
+        returned=screenshot(output,'06-jcl-back')
+        d5=pixels_changed(offline,returned,geom)
+        checks.append({'name':'tap_jcl_back','passed':d5<0.09,
+                       'difference_from_index':round(d5,5)})
+        if not checks[-1]['passed']:raise AssertionError('JCL back did not return to index')
         checks.append({'name':'process_still_alive','passed':alive(package)})
         if not checks[-1]['passed']:raise AssertionError('process crashed during touch navigation')
         report['passed']=True

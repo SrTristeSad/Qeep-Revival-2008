@@ -56,6 +56,15 @@ class AndroidNavigationTests(unittest.TestCase):
         self.assertGreater(nav.pixels_changed(menu,other,geo),.035)
         self.assertEqual(nav.pixels_changed(menu,menu,geo),0)
 
+    def test_index_roundtrip_similarity(self):
+        index=self.frame()
+        returned=index.copy()
+        geo=nav.canvas(index)
+        self.assertLess(nav.pixels_changed(index,returned,geo),0.09)
+        changed=index.copy()
+        ImageDraw.Draw(changed).rectangle((80,600,980,1050),fill=(0,0,0))
+        self.assertGreater(nav.pixels_changed(index,changed,geo),0.09)
+
     def test_differences_ignore_statusbar(self):
         original=self.frame(); edited=original.copy();ImageDraw.Draw(edited).rectangle((0,0,1079,80),fill=(255,255,255))
         self.assertEqual(nav.pixels_changed(original,edited,nav.canvas(original)),0)

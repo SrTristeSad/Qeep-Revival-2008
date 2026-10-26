@@ -24,6 +24,7 @@ jobs:
           lua5.4 tests/test_mobile_touch.lua
           lua5.4 tests/test_client_mobile.lua
           lua5.4 tests/test_client_mobile_viewport.lua
+          lua5.4 tests/test_client_mobile_copy.lua
           lua5.4 tests/test_submit.lua
           lua5.4 tests/test_lab_host.lua
           lua5.4 tests/test_connection_settings.lua
