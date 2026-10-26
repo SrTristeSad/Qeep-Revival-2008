@@ -1,5 +1,8 @@
 # Qeep Revival 2008
 
+**Fase 35 (em implementação):** cadastro real pelo Android aprovado no emulador Android 34 (workflow 40356584485, 12 verificações e rota `/revival/social/register/submit:ok`). Corrigido o cabeçalho JCL de títulos longos: até duas linhas acima da barra de conteúdo, com fonte menor e truncamento UTF-8 seguro se exceder a altura disponível; nunca sobrepõe o divisor. Próximo objetivo é testar login Android com credencial efêmera mantida apenas em memória. Consulte `docs/android-fase35.md`.
+
+
 **Fase 34 (em validação):** a compilação da Fase 33 passou, mas o cadastro Android não foi confirmado. A captura `16-menu-for-registration.png` estava inteiramente preta após o reinício do APK; a automação agora espera a tela LÖVE renderizar e evita um segundo defeito: tocar em y=281, que está fora da área JCL clicável. O teste exige recebimento real de `/revival/social/register` antes de capturar o formulário. Os códigos de acesso continuam proibidos em capturas e relatórios; o resultado do cadastro só será considerado aprovado após o emulador confirmar. Veja `docs/android-registro-fase34.md`.
 
 
