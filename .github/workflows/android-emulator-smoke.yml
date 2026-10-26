@@ -32,6 +32,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_android_smoke.py' -v
           python3 -m unittest discover -s tests -p 'test_android_navigation.py' -v
           python3 -m unittest discover -s tests -p 'test_android_server_smoke.py' -v
+          python3 -m unittest discover -s tests -p 'test_android_login_smoke.py' -v
       - name: Install local-only Lua test server requirements
         run: sudo apt-get update && sudo apt-get install -y lua5.4 lua-socket
       - name: Enable KVM access on hosted Linux runner
@@ -53,7 +54,7 @@ jobs:
           script: |
             python3 tools/android_smoke.py --apk android-artifact/Qeep-Revival-2008-Android-debug.apk --output android-smoke-results
             python3 tools/android_navigation.py --output android-navigation-results
-            python3 tools/android_server_smoke.py --output android-server-results --start-local-server --server-log android-server.log --route-trace android-server-routes.log --verify-social-tcp
+            python3 tools/android_server_smoke.py --output android-server-results --start-local-server --server-log android-server.log --route-trace android-server-routes.log --verify-social-tcp --verify-android-login
       - name: Preserve screenshots, launcher output, and crashes even if startup fails
         if: always()
         uses: actions/upload-artifact@v4

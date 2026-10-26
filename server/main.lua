@@ -31,15 +31,17 @@ assert(listener, e)
 local route_trace_path=host=='127.0.0.1' and os.getenv('QEEP_ROUTE_TRACE') or nil
 local route_trace=route_trace_path and assert(io.open(route_trace_path,'a')) or nil
 local function route(req)
-  if route_trace and (req.path=='/revival/ping' or req.path=='/revival/social/start' or req.path=='/revival/social/join' or req.path=='/revival/social/register') then
+  if route_trace and (req.path=='/revival/ping' or req.path=='/revival/social/start' or req.path=='/revival/social/join' or req.path=='/revival/social/register' or
+      req.path=='/revival/social/login') then
     route_trace:write(req.path,'\n')
     route_trace:flush()
   end
   if req.path:sub(1,16)=='/revival/social/' then
     local response=social.handle(req)
     -- Diagnostic loopback only. NO credentials or response content in trace.
-    if route_trace and req.path=='/revival/social/register/submit' then
-      route_trace:write('/revival/social/register/submit:',
+    if route_trace and (req.path=='/revival/social/register/submit' or
+        req.path=='/revival/social/login/submit') then
+      route_trace:write(req.path,':',
                         response and response.ok and 'ok' or 'error','\n')
       route_trace:flush()
     end

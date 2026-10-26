@@ -8,3 +8,10 @@ A captura `18-registration-form.png` mostrava o título de cadastro invadindo a 
 
 ## Próximo marco
 Automatizar login na interface Android usando uma conta de teste criada no servidor em loopback, com segredo efêmero recebido diretamente pelo script de testes em memória. Nunca gravar código de acesso em log, relatório ou captura de tela. Login pelo Android ainda não é considerado verificado.
+
+## Tentativa automatizada de login na Fase 35
+A nova ferramenta `tools/android_login_smoke.py` cria por TCP (127.0.0.1) uma segunda conta descartável, recebe o código de acesso em memória, reinicia o Android, abre o formulário de login pela interface (eventos DPAD e IME), preenche usuário e código e aciona Entrar. Só conta como sucesso se o servidor registrar `/revival/social/login/submit:ok`. O `server/main.lua` registra somente o nome da rota e seu sucesso/erro, exclusivamente sob `QEEP_ROUTE_TRACE` no loopback.
+
+O código de 48 caracteres não é salvo nem inserido em resultados JSON, capturas ou logs. O sistema interrompe capturas antes da entrada do segredo e redige sequências hexadecimais de 48 caracteres no logcat do teste. Um erro no comando que recebe o segredo é sanitizado, sem exibir a linha de comando.
+
+Os testes Python de segurança e fluxo local validam a automação, mas **o login pelo emulador permanece pendente até terminar GitHub Actions**. O uso de eventos de D-pad neste teste comprova navegação pela interface Android, não usabilidade de todos os toques; essa validação pode ser ampliada depois.

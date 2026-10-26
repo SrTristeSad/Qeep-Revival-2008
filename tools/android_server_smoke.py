@@ -245,7 +245,7 @@ def managed_server(trace, log_path, executable='lua5.4'):
                 child.kill()
                 child.wait(timeout=5)
 
-def run(output,package,server_pid,trace):
+def run(output,package,server_pid,trace,verify_android_login=False):
     output.mkdir(parents=True,exist_ok=True)
     record={'package':package,'passed':False,'checks':[],'transport':'adb reverse tcp:5190'}
     checks=record['checks']
@@ -299,6 +299,10 @@ def run(output,package,server_pid,trace):
         passed('android_guest_join_reached_server',**guest_result)
         registration=register_android(output,package,trace)
         passed('android_account_registration',**registration)
+        if verify_android_login:
+            from android_login_smoke import login_through_android
+            result=login_through_android(output,package,trace)
+            passed('android_login_via_UI',**result)
         if not alive(package):raise AssertionError('APK process died')
         passed('client_alive')
         record['passed']=True
@@ -306,7 +310,12 @@ def run(output,package,server_pid,trace):
         record['errors']=[type(error).__name__+': '+str(error)]
     finally:
         try:
-            (output/'logcat.txt').write_text(adb('logcat','-d','-v','brief',timeout=45),encoding='utf-8')
+            logcat=adb('logcat','-d','-v','brief',timeout=45)
+            if verify_android_login:
+                import re
+                logcat=re.sub(r'(?<![0-9a-f])[0-9a-f]{48}(?![0-9a-f])',
+                              '[REDACTED BEARER CODE]',logcat)
+            (output/'logcat.txt').write_text(logcat,encoding='utf-8')
         except Exception as error:
             record['logcat_error']=str(error)[:250]
         (output/'result.json').write_text(json.dumps(record,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
@@ -320,6 +329,8 @@ def main():
     parser.add_argument('--start-local-server',action='store_true',help='manage loopback Lua process')
     parser.add_argument('--server-log',type=Path,default=Path('android-server.log'))
     parser.add_argument('--route-trace',type=Path,default=Path('android-server-routes.log'))
+    parser.add_argument('--verify-android-login',action='store_true',
+                        help='test Android login with a one-use code kept in memory')
     parser.add_argument('--verify-social-tcp',action='store_true',
                         help='host TCP smoke for local disposable accounts and guest messages')
     a=parser.parse_args()
@@ -327,7 +338,8 @@ def main():
         if a.server_pid is not None:
             parser.error('--server-pid and --start-local-server cannot be combined')
         with managed_server(a.route_trace,a.server_log) as child:
-            ok=run(a.output,a.package,child.pid,a.route_trace)
+            ok=run(a.output,a.package,child.pid,a.route_trace,
+                   verify_android_login=a.verify_android_login)
             if ok and a.verify_social_tcp:
                 # These are real loopback TCP checks against the same server.
                 # They do not claim credentials were entered on Android.
@@ -344,7 +356,8 @@ def main():
     else:
         if a.verify_social_tcp:
             parser.error('--verify-social-tcp requires --start-local-server')
-        ok=run(a.output,a.package,a.server_pid,a.route_trace)
+        ok=run(a.output,a.package,a.server_pid,a.route_trace,
+               verify_android_login=a.verify_android_login)
     print('Android -> Lua server:', 'PASS' if ok else 'FAIL', a.output)
     return 0 if ok else 1
 
