@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import socket
 import time
-from android_smoke import DEFAULT_PACKAGE, adb
+from android_smoke import DEFAULT_PACKAGE, DEFAULT_ACTIVITY, adb
 from android_navigation import canvas, pixels_changed, screenshot, tap, alive
 
 PORT=5190
@@ -123,6 +123,59 @@ def enter_guest_through_android(output, geometry, route_trace):
             'screen_difference':round(pixels_changed(closed,home,actual),5)}
 
 
+
+def registration_approved(trace):
+    return observed_routes(trace,('/revival/social/register/submit:ok',))[
+        '/revival/social/register/submit:ok']
+
+
+def register_android(output, package, trace):
+    """Submit test account by touch. Never capture its secret success screen."""
+    adb('shell','am','force-stop',package)
+    adb('shell','am','start','-n',f'{package}/{DEFAULT_ACTIVITY}')
+    time.sleep(2.0)
+    menu=screenshot(output,'16-menu-for-registration')
+    geo=canvas(menu)
+    if not alive(package):
+        raise AssertionError('Android client failed to restart')
+    tap(geo,120,MENU_Y+6*MENU_ROW+11)
+    welcome=screenshot(output,'17-welcome-for-registration')
+    changed(menu,welcome,geo)
+    tap(canvas(welcome),120,281)
+    form=screenshot(output,'18-registration-form')
+    if not observed_routes(trace,('/revival/social/register',))['/revival/social/register']:
+        raise AssertionError('registration form route not observed')
+    changed(welcome,form,geo)
+    ctl=guest_controls(form,canvas(form),require_button=False)
+    tap(canvas(form),120,ctl['input_y'])
+    for n in range(5):
+        time.sleep(.5)
+        if keyboard_obscures_canvas(screenshot(output,'19-registration-ime')):
+            break
+    else:
+        raise AssertionError('registration input did not receive keyboard focus')
+    adb('shell','input','text','f33androidlab')
+    time.sleep(.5)
+    screenshot(output,'20-registration-username')  # no code exists yet
+    adb('shell','input','keyevent','66')
+    for n in range(6):
+        time.sleep(.6)
+        closed=screenshot(output,f'21-registration-keyboard-closed-{n}')
+        if not keyboard_obscures_canvas(closed):
+            break
+    else:
+        raise AssertionError('registration IME could not close')
+    geometry=canvas(closed)
+    if geometry['width_coverage']<.95:
+        raise AssertionError('Android viewport still obstructed')
+    submit=guest_controls(closed,geometry,require_button=False)
+    # IMPORTANT: successful response shows a bearer code. NO SCREENSHOT after.
+    tap(geometry,120,submit['submit_y'])
+    time.sleep(1.0)
+    if not registration_approved(trace):
+        raise AssertionError('Lua server did not approve registration')
+    return {'approved':True,'secret_response_screenshot':False}
+
 def type_endpoint(value):
     if value!='127.0.0.1:5190':
         raise ValueError('only loopback test target permitted')
@@ -217,6 +270,8 @@ def run(output,package,server_pid,trace):
         guest_result=enter_guest_through_android(output,geom,trace)
         record['routes_observed']['/revival/social/join']=True
         passed('android_guest_join_reached_server',**guest_result)
+        registration=register_android(output,package,trace)
+        passed('android_account_registration',**registration)
         if not alive(package):raise AssertionError('APK process died')
         passed('client_alive')
         record['passed']=True

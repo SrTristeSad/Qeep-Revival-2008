@@ -143,3 +143,32 @@ class AndroidServerSmokeTests(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+
+class AndroidRegistrationRegression(unittest.TestCase):
+    def test_registration_success_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/'routes.log'
+            self.assertFalse(m.registration_approved(path))
+            path.write_text('/revival/social/register/submit:error\n',encoding='utf8')
+            self.assertFalse(m.registration_approved(path))
+            path.write_text('/revival/social/register/submit:ok\n',encoding='utf8')
+            self.assertTrue(m.registration_approved(path))
+
+    def test_never_capture_bearer_screen(self):
+        with patch.object(m,'adb') as adb, \
+             patch.object(m.time,'sleep'), \
+             patch.object(m,'alive',return_value=True), \
+             patch.object(m,'screenshot') as screenshot, \
+             patch.object(m,'canvas',return_value={'width_coverage':1.0}), \
+             patch.object(m,'tap'), patch.object(m,'changed'), \
+             patch.object(m,'guest_controls',return_value={'input_y':215,'submit_y':246}), \
+             patch.object(m,'keyboard_obscures_canvas',side_effect=[True,False]), \
+             patch.object(m,'registration_approved',return_value=True), \
+             patch.object(m,'observed_routes',return_value={'/revival/social/register':True}):
+            result=m.register_android(Path('/tmp/no-creds'),'com.test',Path('/tmp/trace'))
+            self.assertTrue(result['approved'])
+            self.assertFalse(result['secret_response_screenshot'])
+            self.assertEqual(adb.call_args_list[0].args[:3],('shell','am','force-stop'))
+            images=[call.args[1] for call in screenshot.call_args_list]
+            self.assertFalse(any('credentials' in n or 'success' in n or 'submitted' in n for n in images))
