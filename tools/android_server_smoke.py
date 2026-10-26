@@ -153,13 +153,30 @@ def main():
     parser.add_argument('--start-local-server',action='store_true',help='manage loopback Lua process')
     parser.add_argument('--server-log',type=Path,default=Path('android-server.log'))
     parser.add_argument('--route-trace',type=Path,default=Path('android-server-routes.log'))
+    parser.add_argument('--verify-social-tcp',action='store_true',
+                        help='host TCP smoke for local disposable accounts and guest messages')
     a=parser.parse_args()
     if a.start_local_server:
         if a.server_pid is not None:
             parser.error('--server-pid and --start-local-server cannot be combined')
         with managed_server(a.route_trace,a.server_log) as child:
             ok=run(a.output,a.package,child.pid,a.route_trace)
+            if ok and a.verify_social_tcp:
+                # These are real loopback TCP checks against the same server.
+                # They do not claim credentials were entered on Android.
+                results={}
+                for script in ('tests/test_socket_accounts.lua','tests/test_socket_social.lua'):
+                    completed=subprocess.run(['lua5.4',script],cwd=Path(__file__).resolve().parents[1],
+                                             capture_output=True,text=True,timeout=30)
+                    results[script]={'passed':completed.returncode==0}
+                    if completed.returncode:
+                        ok=False
+                (a.output/'host-social-tcp.json').write_text(
+                    json.dumps({'passed':ok,'kind':'host_TCP_not_Android_UI',
+                                'checks':results},indent=2)+'\n',encoding='utf-8')
     else:
+        if a.verify_social_tcp:
+            parser.error('--verify-social-tcp requires --start-local-server')
         ok=run(a.output,a.package,a.server_pid,a.route_trace)
     print('Android -> Lua server:', 'PASS' if ok else 'FAIL', a.output)
     return 0 if ok else 1
