@@ -40,10 +40,49 @@ def keyboard_obscures_canvas(image):
         return True
 
 
+# Framebuffer-grounded synthetic form controls, validated against the
+# Fase 31 screenshot (logical x=15/225, y=208..226). No OCR or arbitrary taps.
+OLIVE_BORDER=(160,180,25)
+SELECTED_BUTTON=(205,255,60)
+
+
+def guest_controls(image, geo, require_button=True):
+    from android_navigation import logical_point
+    rgb=image.convert('RGB')
+    def pixel(x,y):
+        px,py=logical_point(geo,x,y)
+        if not (0<=px<rgb.width and 0<=py<rgb.height):
+            raise AssertionError('guest controls outside framebuffer')
+        return rgb.getpixel((px,py))
+    def near(a,b):
+        return all(abs(x-y)<=5 for x,y in zip(a,b))
+    rows=[y for y in range(120,272)
+          if near(pixel(15,y),OLIVE_BORDER)
+          and near(pixel(225,y),OLIVE_BORDER)]
+    groups=[]
+    for y in rows:
+        if not groups or y>groups[-1][-1]+1:
+            groups.append([y])
+        else:
+            groups[-1].append(y)
+    boxes=[g for g in groups if 13<=len(g)<=45]
+    if len(boxes)!=1:
+        raise AssertionError('expected exactly one guest input outline')
+    box=boxes[0]
+    submit=box[-1]+20
+    if submit>=275:
+        raise AssertionError('guest submit row out of bounds')
+    if require_button and not near(pixel(15,submit),SELECTED_BUTTON):
+        raise AssertionError('guest submit button not highlighted')
+    return {'input_y':round((box[0]+box[-1])/2),'submit_y':submit}
+
+
 def enter_guest_through_android(output, geometry, route_trace):
     """Wait for actual text focus and remeasure the viewport after IME closes."""
+    before=screenshot(output,'10-guest-before-focus')
+    control=guest_controls(before,canvas(before))
     focus = None
-    for i, y in enumerate((180,175,185),1):
+    for i, y in enumerate((control['input_y'],)*3,1):
         tap(geometry,120,y)
         focus=screenshot(output,f'10-guest-focus-{i}')
         if keyboard_obscures_canvas(focus):
@@ -51,7 +90,7 @@ def enter_guest_through_android(output, geometry, route_trace):
     else:
         raise AssertionError('nickname editor never opened Android keyboard')
     # Sending text before keyboard focus loses characters on Android 34.
-    adb('shell','input','text','f31guest')
+    adb('shell','input','text','f32guest')
     time.sleep(1.0)
     screenshot(output,'11-guest-typed')
     adb('shell','input','keyevent','66')  # complete text editing
@@ -70,11 +109,12 @@ def enter_guest_through_android(output, geometry, route_trace):
     actual=canvas(closed)
     if actual['width_coverage']<.95:
         raise AssertionError('Android viewport not restored after IME')
-    tap(actual,120,205)
+    submit=guest_controls(closed,actual,require_button=False)
+    tap(actual,120,submit['submit_y'])
     home=screenshot(output,'13-guest-submit')
     routes=observed_routes(route_trace,('/revival/social/join',))
     if not routes['/revival/social/join']:
-        tap(actual,120,208)  # retry only if server did not receive it
+        tap(actual,120,submit['submit_y'])  # retry only if server did not receive it
         home=screenshot(output,'14-guest-retry')
         routes=observed_routes(route_trace,('/revival/social/join',))
     if not routes['/revival/social/join']:

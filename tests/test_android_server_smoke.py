@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image, ImageDraw
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import android_server_smoke as smoke
-from android_navigation import canvas
+from android_navigation import canvas, logical_point
 
 class AndroidServerSmokeTests(unittest.TestCase):
     def test_only_loopback_endpoint(self):
@@ -89,14 +89,32 @@ class AndroidServerSmokeTests(unittest.TestCase):
         draw.rectangle((0,1100,1079,1919),fill=(235,235,235))
         self.assertTrue(smoke.keyboard_obscures_canvas(img))
 
-    def test_guest_waits_for_keyboard_and_remeasures_viewport(self):
+    @staticmethod
+    def guest_screen():
         img=Image.new('RGB',(1080,1920),(40,40,40))
-        draw=ImageDraw.Draw(img)
-        draw.rectangle((0,239,1079,350),fill=(125,20,125))
-        draw.rectangle((0,1566,1079,1677),fill=(125,20,125))
+        d=ImageDraw.Draw(img)
+        d.rectangle((0,239,1079,350),fill=(125,20,125))
+        d.rectangle((0,1566,1079,1677),fill=(125,20,125))
+        geo=canvas(img)
+        d.rectangle((*logical_point(geo,15,208),*logical_point(geo,225,226)),outline=(160,180,25),width=5)
+        d.rectangle((*logical_point(geo,11,234),*logical_point(geo,229,259)),fill=(205,255,60))
+        return img
+
+    def test_detect_actual_guest_input_and_submit(self):
+        img=self.guest_screen()
+        self.assertEqual(smoke.guest_controls(img,canvas(img)),{'input_y':217,'submit_y':246})
+        geo=canvas(img)
+        bad=img.copy()
+        ImageDraw.Draw(bad).rectangle((*logical_point(geo,11,234),*logical_point(geo,229,259)),fill=(235,255,185))
+        with self.assertRaisesRegex(AssertionError,'not highlighted'):
+            smoke.guest_controls(bad,geo)
+        self.assertEqual(smoke.guest_controls(bad,geo,require_button=False)['input_y'],217)
+
+    def test_guest_waits_for_keyboard_and_remeasures_viewport(self):
+        img=self.guest_screen()
         ime=img.copy()
         ImageDraw.Draw(ime).rectangle((0,1100,1079,1919),fill=(235,235,235))
-        screenshots=iter([img,ime,ime,img,img])
+        screenshots=iter([img,ime,ime,img,img,img])
         taps=[]
         def tap(geom,x,y):
             taps.append(y)
@@ -110,14 +128,11 @@ class AndroidServerSmokeTests(unittest.TestCase):
              patch.object(smoke.time,'sleep'):
             data=smoke.enter_guest_through_android(Path(tmp),canvas(img),Path(tmp)/'trace')
         self.assertTrue(data['ime_opened'] and data['ime_closed'])
-        self.assertEqual(taps,[180,175,205])
-        self.assertEqual([c.args for c in adb.call_args_list if c.args[:3]==('shell','input','text')],[('shell','input','text','f31guest')])
+        self.assertEqual(taps,[217,246])
+        self.assertEqual([c.args for c in adb.call_args_list if c.args[:3]==('shell','input','text')],[('shell','input','text','f32guest')])
 
     def test_guest_never_types_without_keyboard_focus(self):
-        img=Image.new('RGB',(1080,1920),(40,40,40))
-        draw=ImageDraw.Draw(img)
-        draw.rectangle((0,239,1079,350),fill=(125,20,125))
-        draw.rectangle((0,1566,1079,1677),fill=(125,20,125))
+        img=self.guest_screen()
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(smoke,'tap'), \
              patch.object(smoke,'screenshot',return_value=img), \

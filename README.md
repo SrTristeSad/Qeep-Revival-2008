@@ -1,5 +1,8 @@
 # Qeep Revival 2008
 
+**Fase 32:** a execução Android 34 da Fase 31 (`40272603749`) abriu o APK e confirmou TCP para `/revival/ping` e `/revival/social/start`, mas o teste tocava em parágrafos em `y=175–185`, não no campo de apelido (`y≈208–226`). Agora o teste identifica as bordas oliva do campo e o botão destacado diretamente na captura real, sem OCR, e exige `/revival/social/join`. A entrada Android permanece pendente de nova execução no CI. Veja `docs/android-formulario-fase32.md`.
+
+
 **Fase 31:** o teste Android da Fase 30 (run 40261539359) abriu o social e enviou ping/start, mas não entrou como visitante. Capturas mostram que o teclado abriu tarde e a automação utilizou coordenadas desatualizadas. Corrigido o teste para aguardar foco no IME, digitar, dispensar o teclado, recalibrar o viewport e exigir a rota real /revival/social/join no servidor. A execução Android desta correção ainda depende do CI. Veja docs/android-conexao-fase31.md.
 
 
