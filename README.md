@@ -1,5 +1,8 @@
 # Qeep Revival 2008
 
+**Fase 31:** o teste Android da Fase 30 (run 40261539359) abriu o social e enviou ping/start, mas não entrou como visitante. Capturas mostram que o teclado abriu tarde e a automação utilizou coordenadas desatualizadas. Corrigido o teste para aguardar foco no IME, digitar, dispensar o teclado, recalibrar o viewport e exigir a rota real /revival/social/join no servidor. A execução Android desta correção ainda depende do CI. Veja docs/android-conexao-fase31.md.
+
+
 **Fase 30:** a comunicação Android ↔ Lua foi comprovada na execução `40259673092` (rotas de ping e abertura social). O novo smoke passa a tocar no campo de apelido e no botão de entrada como visitante, verificando a rota real `/revival/social/join`. A automação também executa testes de cadastro/login de conta e mensagens entre visitantes usando TCP no host, no mesmo servidor local; isso **não** é login pela interface Android. A autenticação completa no celular ainda depende de validação.
 
 

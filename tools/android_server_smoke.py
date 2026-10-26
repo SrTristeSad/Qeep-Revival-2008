@@ -29,6 +29,60 @@ def observed_routes(file, expected):
     observed=set(file.read_text(encoding='utf-8').splitlines()) if file.exists() else set()
     return {item:item in observed for item in expected}
 
+def keyboard_obscures_canvas(image):
+    """The original two purple UI bands disappear when Android opens its IME.
+
+    This is a geometry-only indicator, not proof that text was submitted.
+    """
+    try:
+        return canvas(image)['width_coverage'] < 0.70
+    except ValueError:
+        return True
+
+
+def enter_guest_through_android(output, geometry, route_trace):
+    """Wait for actual text focus and remeasure the viewport after IME closes."""
+    focus = None
+    for i, y in enumerate((180,175,185),1):
+        tap(geometry,120,y)
+        focus=screenshot(output,f'10-guest-focus-{i}')
+        if keyboard_obscures_canvas(focus):
+            break
+    else:
+        raise AssertionError('nickname editor never opened Android keyboard')
+    # Sending text before keyboard focus loses characters on Android 34.
+    adb('shell','input','text','f31guest')
+    time.sleep(1.0)
+    screenshot(output,'11-guest-typed')
+    adb('shell','input','keyevent','66')  # complete text editing
+    closed=None
+    for i in range(6):
+        time.sleep(.65)
+        closed=screenshot(output,f'12-keyboard-closed-{i}')
+        if not keyboard_obscures_canvas(closed):
+            break
+    else:
+        adb('shell','input','keyevent','4')  # dismiss Android IME
+        time.sleep(1.0)
+        closed=screenshot(output,'12-back-dismiss-ime')
+        if keyboard_obscures_canvas(closed):
+            raise AssertionError('Android editor did not dismiss after submit')
+    actual=canvas(closed)
+    if actual['width_coverage']<.95:
+        raise AssertionError('Android viewport not restored after IME')
+    tap(actual,120,205)
+    home=screenshot(output,'13-guest-submit')
+    routes=observed_routes(route_trace,('/revival/social/join',))
+    if not routes['/revival/social/join']:
+        tap(actual,120,208)  # retry only if server did not receive it
+        home=screenshot(output,'14-guest-retry')
+        routes=observed_routes(route_trace,('/revival/social/join',))
+    if not routes['/revival/social/join']:
+        raise AssertionError('Android guest join never reached the Lua server')
+    return {'ime_opened':True,'ime_closed':True,
+            'screen_difference':round(pixels_changed(closed,home,actual),5)}
+
+
 def type_endpoint(value):
     if value!='127.0.0.1:5190':
         raise ValueError('only loopback test target permitted')
@@ -118,20 +172,11 @@ def run(output,package,server_pid,trace):
         for route,ok in received.items():
             if not ok:raise AssertionError('Lua server never received '+route)
             passed('server_received_'+route.replace('/','_'))
-        # Validate a real guest submission from the Android JCL screen.
-        tap(geom,120,176)
-        adb('shell','input','text','f30guest')
-        adb('shell','input','keyevent','66')
-        time.sleep(.8)
-        before_join=screenshot(output,'10-guest-nickname')
-        tap(geom,120,205)
-        after_join=screenshot(output,'11-guest-home')
-        delta=changed(before_join,after_join,geom,.035)
-        guest=observed_routes(trace,('/revival/social/join',))
-        record['routes_observed'].update(guest)
-        if not guest['/revival/social/join']:
-            raise AssertionError('Android guest join did not reach Lua server')
-        passed('android_guest_join_reached_server',difference=delta)
+        # Android IME changes window geometry: never reuse the old tap
+        # coordinates while its on-screen keyboard is open.
+        guest_result=enter_guest_through_android(output,geom,trace)
+        record['routes_observed']['/revival/social/join']=True
+        passed('android_guest_join_reached_server',**guest_result)
         if not alive(package):raise AssertionError('APK process died')
         passed('client_alive')
         record['passed']=True
