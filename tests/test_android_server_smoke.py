@@ -9,6 +9,7 @@ from unittest.mock import patch
 from PIL import Image, ImageDraw
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import android_server_smoke as smoke
+m = smoke  # alias for Phase 33 registration regression tests
 from android_navigation import canvas, logical_point
 
 class AndroidServerSmokeTests(unittest.TestCase):
